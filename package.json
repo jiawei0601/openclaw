@@ -1701,6 +1701,7 @@
     "@mariozechner/pi-coding-agent": "0.73.0",
     "@mariozechner/pi-tui": "0.73.0",
     "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/server-gdrive": "^0.7.0",
     "@mozilla/readability": "^0.6.0",
     "@openclaw/fs-safe": "github:openclaw/fs-safe#c7ccb99d3058f2acf2ad2758ad2470c7e113a53c",
     "@slack/bolt": "^4.7.2",

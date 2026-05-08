@@ -1,10 +1,7 @@
 {
   "agents": {
     "defaults": {
-      "model": {
-        "provider": "google",
-        "model": "gemini-2.5-flash"
-      },
+      "model": "google/gemini-2.5-flash",
       "agentRuntime": {
         "id": "pi"
       },

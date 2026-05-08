@@ -1,0 +1,31 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "provider": "google",
+        "model": "gemini-2.5-flash"
+      },
+      "agentRuntime": {
+        "id": "pi"
+      },
+      "timeoutSeconds": 180
+    }
+  },
+  "mcp": {
+    "servers": {
+      "google-drive": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-google-drive"],
+        "env": {
+          "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/google-drive-key.json"
+        }
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "dmPolicy": "open",
+      "allowFrom": ["984052013"]
+    }
+  }
+}

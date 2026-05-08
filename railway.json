@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "sh -c 'echo \"$GOOGLE_DRIVE_CREDENTIALS_JSON\" > /tmp/google-drive-key.json && export OPENCLAW_CONFIG_PATH=./openclaw.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
+    "startCommand": "sh -c 'printf \"%s\" \"$GOOGLE_DRIVE_CREDENTIALS_JSON\" > /tmp/google-drive-key.json && export OPENCLAW_CONFIG_PATH=./openclaw.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE"

@@ -11,7 +11,7 @@
   "mcp": {
     "servers": {
       "google_drive": {
-        "command": "mcp-server-google-drive",
+        "command": "mcp-server-gdrive",
         "args": [],
         "env": {
           "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/google-drive-key.json"

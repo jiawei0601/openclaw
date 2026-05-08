@@ -4,21 +4,12 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "sh -c 'echo \"$GOOGLE_DRIVE_CREDENTIALS_JSON\" > /tmp/google-drive-key.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
+    "startCommand": "sh -c 'echo \"$GOOGLE_DRIVE_CREDENTIALS_JSON\" > /tmp/google-drive-key.json && printf \"{\\n  \\\"agents\\\": {\\n    \\\"defaults\\\": {\\n      \\\"model\\\": {\\n        \\\"provider\\\": \\\"google\\\",\\n        \\\"model\\\": \\\"gemini-2.5-flash\\\"\\n      },\\n      \\\"agentRuntime\\\": {\\n        \\\"id\\\": \\\"pi\\\"\\n      },\\n      \\\"timeoutSeconds\\\": 180\\n    }\\n  },\\n  \\\"mcp\\\": {\\n    \\\"servers\\\": {\\n      \\\"google-drive\\\": {\\n        \\\"command\\\": \\\"npx\\\",\\n        \\\"args\\\": [\\\"-y\\\", \\\"@modelcontextprotocol/server-google-drive\\\"],\\n        \\\"env\\\": {\\n          \\\"GOOGLE_APPLICATION_CREDENTIALS\\\": \\\"/tmp/google-drive-key.json\\\"\\n        }\\n      }\\n    }\\n  },\\n  \\\"channels\\\": {\\n    \\\"telegram\\\": {\\n      \\\"dmPolicy\\\": \\\"open\\\",\\n      \\\"allowFrom\\\": [\\\"984052013\\\"]\\n    }\\n  }\\n}\" > /tmp/openclaw.json && export OPENCLAW_CONFIG_PATH=/tmp/openclaw.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE"
   },
   "variables": {
-    "OPENCLAW__AGENTS__DEFAULTS__AGENT_RUNTIME__ID": "pi",
-    "OPENCLAW__AGENTS__DEFAULTS__MODEL__PROVIDER": "google",
-    "OPENCLAW__AGENTS__DEFAULTS__MODEL__MODEL": "gemini-2.5-flash",
-    "OPENCLAW__EXTENSIONS__CODEX__DISCOVERY__ENABLED": "false",
-    "OPENCLAW__CHANNELS__TELEGRAM__DM_POLICY": "open",
-    "OPENCLAW__CHANNELS__TELEGRAM__ALLOW_FROM": "984052013",
-    "OPENCLAW__AGENTS__DEFAULTS__TIMEOUT_SECONDS": "180",
-    "OPENCLAW__MCP__SERVERS__GOOGLE_DRIVE__COMMAND": "npx",
-    "OPENCLAW__MCP__SERVERS__GOOGLE_DRIVE__ARGS": "-y,@modelcontextprotocol/server-google-drive",
-    "OPENCLAW__MCP__SERVERS__GOOGLE_DRIVE__ENV__GOOGLE_APPLICATION_CREDENTIALS": "/tmp/google-drive-key.json"
+    "OPENCLAW__EXTENSIONS__CODEX__DISCOVERY__ENABLED": "false"
   }
 }

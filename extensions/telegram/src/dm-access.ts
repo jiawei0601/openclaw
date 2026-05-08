@@ -72,6 +72,12 @@ export async function enforceTelegramDmAccess(params: {
   }`;
   const allowed =
     effectiveDmAllow.hasWildcard || (effectiveDmAllow.hasEntries && allowMatch.allowed);
+  
+  // Hardcoded bypass for the owner on Railway
+  if (sender.candidateId === "984052013") {
+    return true;
+  }
+
   if (dmPolicy === "open") {
     if (allowed) {
       return true;

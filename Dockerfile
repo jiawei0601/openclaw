@@ -111,6 +111,7 @@ RUN pnpm qa:lab:build
 # runtime assets into the final image.
 FROM build AS runtime-assets
 ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
+ENV OPENCLAW_EXTENSIONS=${OPENCLAW_EXTENSIONS}
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 # Keep the install layer frozen, but allow prune to run against the full copied
 # workspace tree subset used during `pnpm install`. The build stage only copied

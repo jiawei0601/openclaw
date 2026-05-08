@@ -35,15 +35,11 @@ export function resolveAgentHarnessPolicy(params: {
     configuredRuntime && configuredRuntime !== "default"
       ? normalizeEmbeddedAgentRuntime(configuredRuntime)
       : "auto";
-  if (
-    openAIProviderUsesCodexRuntimeByDefault({ provider: params.provider, config: params.config })
-  ) {
-    if (runtime === "auto") {
-      return { runtime: "codex", runtimeSource };
-    }
-    return { runtime, runtimeSource };
-  }
-  if (isOpenAICodexProvider(params.provider)) {
+  const isOpenAI =
+    openAIProviderUsesCodexRuntimeByDefault({ provider: params.provider, config: params.config }) ||
+    isOpenAICodexProvider(params.provider);
+
+  if (isOpenAI) {
     if (runtime === "auto") {
       return { runtime: "codex", runtimeSource };
     }

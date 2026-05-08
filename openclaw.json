@@ -10,12 +10,14 @@
   },
   "mcp": {
     "servers": {
-      "google-drive": {
+      "google_drive": {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-google-drive"],
         "env": {
           "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/google-drive-key.json"
-        }
+        },
+        "type": "stdio",
+        "description": "Access and manage files in Google Drive, including reading, creating, and editing documents."
       }
     }
   },

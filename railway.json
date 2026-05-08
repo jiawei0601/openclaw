@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "node -e \"fs.writeFileSync('/tmp/google-drive-key.json', process.env.GOOGLE_DRIVE_CREDENTIALS_JSON)\" && export OPENCLAW_CONFIG_PATH=./openclaw.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured",
+    "startCommand": "node -e \"if(process.env.GOOGLE_DRIVE_CREDENTIALS_JSON) require('fs').writeFileSync('/tmp/google-drive-key.json', process.env.GOOGLE_DRIVE_CREDENTIALS_JSON)\" && export OPENCLAW_CONFIG_PATH=./openclaw.json && node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE"

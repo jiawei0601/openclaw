@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "sh -c 'node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured --plugin-dir extensions'",
+    "startCommand": "sh -c 'node openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE"

@@ -27,7 +27,7 @@ ARG OPENCLAW_BUN_IMAGE="oven/bun:1.3.13@sha256:87416c977a612a204eb54ab9f3927023c
 # current multi-arch manifest list entries.
 
 FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS ext-deps
-ARG OPENCLAW_EXTENSIONS
+ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 # Copy package.json for opted-in extensions so pnpm resolves their deps.
 COPY ${OPENCLAW_BUNDLED_PLUGIN_DIR} /tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}
@@ -110,7 +110,7 @@ RUN pnpm qa:lab:build
 # Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.
 FROM build AS runtime-assets
-ARG OPENCLAW_EXTENSIONS
+ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 # Keep the install layer frozen, but allow prune to run against the full copied
 # workspace tree subset used during `pnpm install`. The build stage only copied

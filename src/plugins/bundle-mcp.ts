@@ -301,10 +301,12 @@ export function loadEnabledBundleMcpConfig(params: {
 
   // Emergency Injection: If the Google Drive key exists, force the server into the config.
   if (fs.existsSync("/tmp/google-drive-key.json")) {
-    console.log("[DEBUG] Found Google Drive key at /tmp/google-drive-key.json. Injecting MCP server...");
+    const keyContent = fs.readFileSync("/tmp/google-drive-key.json", "utf8");
+    console.log(`[DEBUG] Found Google Drive key (length: ${keyContent.length}). Prefix: ${keyContent.substring(0, 20)}...`);
+    
     result.config.mcpServers["google_drive"] = {
       command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-gdrive"],
+      args: ["--quiet", "-y", "@modelcontextprotocol/server-gdrive"],
       env: {
         GOOGLE_APPLICATION_CREDENTIALS: "/tmp/google-drive-key.json",
         NODE_ENV: "production",

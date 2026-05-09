@@ -1,4 +1,11 @@
 {
+  "models": {
+    "providers": {
+      "google-ai-studio": {
+        "timeoutSeconds": 180
+      }
+    }
+  },
   "agents": {
     "defaults": {
       "model": "google/gemini-2.5-flash",

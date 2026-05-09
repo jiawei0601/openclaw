@@ -1,6 +1,7 @@
 import fs from 'fs';
 
 const CONFIG_PATH = '/app/openclaw.json';
+const KEY_PATH = '/tmp/google-drive-key.json';
 
 async function main() {
     console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
@@ -9,6 +10,16 @@ async function main() {
     if (!rawCredentials) {
         console.log("[SKIP] No GOOGLE_DRIVE_CREDENTIALS_JSON found. Google Drive tools will not be available.");
         return;
+    }
+
+    // Write credentials to a file so the MCP server reads it directly,
+    // avoiding JSON double-encoding issues when embedding in openclaw.json.
+    try {
+        fs.writeFileSync(KEY_PATH, rawCredentials, 'utf8');
+        console.log(`[INFO] Credentials written to ${KEY_PATH}`);
+    } catch (err) {
+        console.error(`[ERROR] Failed to write credentials file: ${err.message}`);
+        process.exit(1);
     }
 
     try {
@@ -22,7 +33,7 @@ async function main() {
         if (!config.mcp.servers) config.mcp.servers = {};
 
         const mcpEnv = {
-            GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
+            GOOGLE_DRIVE_KEY_PATH: KEY_PATH,
         };
         if (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID) {
             mcpEnv.GOOGLE_DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
@@ -36,7 +47,7 @@ async function main() {
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted — set GOOGLE_DRIVE_ROOT_FOLDER_ID to restrict)'}`);
+        console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted)'}`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
         process.exit(1);

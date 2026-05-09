@@ -1,6 +1,7 @@
 // Google Workspace MCP Server v2.0.0 - Full CRUD
 console.error("[BOOT] mcp-gdrive.mjs: Initializing...");
 
+import fs from "fs";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -182,35 +183,44 @@ class GoogleWorkspaceManager {
   }
 }
 
+async function loadCredentials() {
+  // Prefer reading from a file to avoid JSON double-encoding issues
+  const keyPath = process.env.GOOGLE_DRIVE_KEY_PATH;
+  if (keyPath) {
+    if (!fs.existsSync(keyPath))
+      throw new Error(`Credentials file not found: ${keyPath}`);
+    return JSON.parse(fs.readFileSync(keyPath, "utf8"));
+  }
+
+  // Fallback: parse from env var
+  const rawCreds =
+    process.env.GOOGLE_DRIVE_CREDENTIALS_JSON ||
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
+  if (!rawCreds)
+    throw new Error(
+      "Missing GOOGLE_DRIVE_KEY_PATH, GOOGLE_DRIVE_CREDENTIALS_JSON, or GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON"
+    );
+
+  let clean = rawCreds.trim();
+  // Strip surrounding quotes added by some platforms
+  if (clean.startsWith('"') && clean.endsWith('"')) {
+    try {
+      const inner = JSON.parse(clean);
+      clean = typeof inner === "string" ? inner : JSON.stringify(inner);
+    } catch {
+      clean = clean.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, "\n");
+    }
+  }
+  return JSON.parse(clean);
+}
+
 async function getManager() {
   if (managerInstance) return managerInstance;
 
   console.error("[INFO] Lazy loading 'googleapis'...");
   const { google } = await import("googleapis");
 
-  let rawCreds =
-    process.env.GOOGLE_DRIVE_CREDENTIALS_JSON ||
-    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
-  if (!rawCreds)
-    throw new Error(
-      "Missing GOOGLE_DRIVE_CREDENTIALS_JSON or GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON"
-    );
-
-  let credentials;
-  if (typeof rawCreds === "object") {
-    credentials = rawCreds;
-  } else {
-    let clean = rawCreds.trim();
-    if (clean.startsWith('"')) {
-      try {
-        clean = JSON.parse(clean);
-      } catch {
-        clean = clean.replace(/^"|"$/g, "").replace(/\\"/g, '"').replace(/\\n/g, "\n");
-      }
-    }
-    credentials = typeof clean === "string" ? JSON.parse(clean) : clean;
-  }
-
+  const credentials = await loadCredentials();
   managerInstance = new GoogleWorkspaceManager(credentials, google);
   console.error(
     `[SUCCESS] Manager initialized. Root folder: ${ROOT_FOLDER_ID || "(unrestricted)"}`

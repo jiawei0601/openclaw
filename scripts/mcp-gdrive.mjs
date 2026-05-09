@@ -20,13 +20,17 @@ const auth = new google.auth.JWT(
   credentials.client_email,
   null,
   credentials.private_key,
-  ["https://www.googleapis.com/auth/drive"]
+  [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/spreadsheets"
+  ]
 );
 
 const drive = google.drive({ version: "v3", auth });
+const sheets = google.sheets({ version: "v4", auth });
 
 const server = new Server(
-  { name: "gdrive-service-account", version: "1.2.0" },
+  { name: "gdrive-service-account", version: "1.3.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -45,17 +49,37 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
-        name: "read_file",
-        description: "Read a file",
+        name: "create_spreadsheet",
+        description: "Create a new Google Spreadsheet",
         inputSchema: {
           type: "object",
-          required: ["fileId"],
-          properties: { fileId: { type: "string" } }
+          required: ["name"],
+          properties: {
+            name: { type: "string", description: "Name of the spreadsheet" },
+            folderId: { type: "string", description: "Optional folder ID" }
+          }
+        }
+      },
+      {
+        name: "append_spreadsheet_values",
+        description: "Append rows to a Google Spreadsheet",
+        inputSchema: {
+          type: "object",
+          required: ["spreadsheetId", "values"],
+          properties: {
+            spreadsheetId: { type: "string" },
+            range: { type: "string", description: "e.g. Sheet1!A1", default: "Sheet1!A1" },
+            values: { 
+              type: "array", 
+              items: { type: "array", items: { type: "string" } },
+              description: "Array of rows (each row is an array of strings)"
+            }
+          }
         }
       },
       {
         name: "write_file",
-        description: "Create or update a file",
+        description: "Create or update a generic file (non-spreadsheet)",
         inputSchema: {
           type: "object",
           required: ["name", "content"],
@@ -82,39 +106,49 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: JSON.stringify(res.data.files, null, 2) }] };
     }
 
-    if (name === "read_file") {
-      const res = await drive.files.get({ fileId: args.fileId, alt: "media" }, { responseType: "text" });
-      return { content: [{ type: "text", text: res.data }] };
+    if (name === "create_spreadsheet") {
+      const res = await drive.files.create({
+        requestBody: { 
+          name: args.name, 
+          mimeType: 'application/vnd.google-apps.spreadsheet',
+          parents: args.folderId ? [args.folderId] : [] 
+        },
+        fields: "id, name"
+      });
+      return { content: [{ type: "text", text: `Created Spreadsheet: ${res.data.name} (${res.data.id})` }] };
+    }
+
+    if (name === "append_spreadsheet_values") {
+      const res = await sheets.spreadsheets.values.append({
+        spreadsheetId: args.spreadsheetId,
+        range: args.range || "Sheet1!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: args.values }
+      });
+      return { content: [{ type: "text", text: `Appended ${res.data.updates.updatedRows} rows to spreadsheet.` }] };
     }
 
     if (name === "write_file") {
       const mimeType = args.name.endsWith('.csv') ? 'text/csv' : 'text/plain';
-      
       if (args.fileId) {
-        console.error(`[INFO] Updating existing file ${args.fileId}`);
-        const res = await drive.files.update({
-          fileId: args.fileId,
-          media: { mimeType, body: args.content }
-        });
-        return { content: [{ type: "text", text: `Updated ${res.data.name}` }] };
+        await drive.files.update({ fileId: args.fileId, media: { mimeType, body: args.content } });
+        return { content: [{ type: "text", text: `Updated file ${args.fileId}` }] };
       } else {
-        console.error(`[INFO] Creating new file ${args.name} in folder ${args.folderId || 'root'}`);
         const res = await drive.files.create({
           requestBody: { name: args.name, parents: args.folderId ? [args.folderId] : [] },
           media: { mimeType, body: args.content },
           fields: "id, name"
         });
-        return { content: [{ type: "text", text: `Created ${res.data.name} (${res.data.id})` }] };
+        return { content: [{ type: "text", text: `Created file ${res.data.name} (${res.data.id})` }] };
       }
     }
   } catch (err) {
-    // CRITICAL: Log full error details to stderr for Railway logging
-    console.error(`[ERROR] Google Drive API Failure:`, err.response?.data || err.message);
-    return { content: [{ type: "text", text: `Drive API Error: ${err.message}. Details: ${JSON.stringify(err.response?.data || {})}` }], isError: true };
+    console.error(`[ERROR] Google API Failure:`, err.response?.data || err.message);
+    return { content: [{ type: "text", text: `Error: ${err.message}. Details: ${JSON.stringify(err.response?.data || {})}` }], isError: true };
   }
   throw new Error(`Tool not found: ${name}`);
 });
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("Google Drive Service Account MCP server (v1.2.0) running");
+console.error("Google Drive/Sheets Service Account MCP server (v1.3.0) running");

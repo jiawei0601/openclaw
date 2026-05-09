@@ -31,11 +31,12 @@ async function main() {
             }
         }
 
-        // Fix: mcpServers should be a TOP-LEVEL key, not under gateway
-        if (!config.mcpServers) config.mcpServers = {};
+        // Correct nesting based on src/agents/bundle-mcp-config.ts
+        if (!config.mcp) config.mcp = {};
+        if (!config.mcp.servers) config.mcp.servers = {};
 
         // Inject Google Drive Tool
-        config.mcpServers["google_drive"] = {
+        config.mcp.servers["google_drive"] = {
             command: "/usr/local/bin/mcp-server-gdrive",
             args: ["--service-account-key", KEY_PATH],
             env: {
@@ -48,7 +49,7 @@ async function main() {
 
         // Write back as formatted JSON
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH} (Top-level)`);
+        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH} (mcp.servers)`);
 
     } catch (err) {
         console.error(`[ERROR] Configuration injection failed: ${err.message}`);

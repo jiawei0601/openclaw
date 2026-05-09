@@ -1,13 +1,11 @@
 import fs from 'fs';
-import { spawnSync } from 'child_process';
 
 const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- FINAL ATTEMPT DIAGNOSTICS ---");
+    console.log("--- SWITCHING TO NEW GOOGLE DRIVE SERVER ---");
 
-    // 1. Write the Key
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) return;
 
@@ -18,8 +16,6 @@ async function main() {
         console.error(`[ERROR] Write failed: ${err.message}`);
     }
 
-    // 2. Updated Injection Strategy
-    // We will use BOTH environment variables and arguments to force Service Account mode
     try {
         let config = {};
         if (fs.existsSync(CONFIG_PATH)) {
@@ -30,21 +26,20 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
+        // Use the NEW package binary
         config.mcp.servers["google_drive"] = {
-            // Force using node to run the global binary if possible, or just the binary
-            command: "mcp-server-gdrive", 
-            args: ["--service-account-key", KEY_PATH],
+            command: "mcp-server-google-drive", 
+            args: [], // The new server uses env vars for service account often
             env: {
-                // This is the CRITICAL one for Google Cloud SDK
                 GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
-                // Some servers need this to skip the 'auth' prompt
-                GDRIVE_SERVICE_ACCOUNT: "true" 
+                // Some versions use this specifically
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
             },
             type: "stdio"
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Final configuration injected with GOOGLE_APPLICATION_CREDENTIALS force.`);
+        console.log(`[INFO] Configuration updated for server-google-drive.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

@@ -253,7 +253,7 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
     fi
 
 # Pre-install Google Drive MCP server globally for stability.
-RUN npm install -g @modelcontextprotocol/server-gdrive
+RUN npm install -g @modelcontextprotocol/server-google-drive
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \

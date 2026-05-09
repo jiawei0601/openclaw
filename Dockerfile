@@ -10,7 +10,7 @@
 # unrelated plugin source changes.
 #
 # Build stages use full bookworm; the runtime image is always bookworm-slim.
-ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
+ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai,duckduckgo,firecrawl"
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR=extensions
 ARG OPENCLAW_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
 ARG OPENCLAW_NODE_BOOKWORM_SLIM_IMAGE="node:24-bookworm-slim@sha256:e8e2e91b1378f83c5b2dd15f0247f34110e2fe895f6ca7719dbb780f929368eb"
@@ -27,7 +27,7 @@ ARG OPENCLAW_BUN_IMAGE="oven/bun:1.3.13@sha256:87416c977a612a204eb54ab9f3927023c
 # current multi-arch manifest list entries.
 
 FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS ext-deps
-ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
+ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai,duckduckgo,firecrawl"
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 # Copy package.json for opted-in extensions so pnpm resolves their deps.
 COPY ${OPENCLAW_BUNDLED_PLUGIN_DIR} /tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}
@@ -110,7 +110,7 @@ RUN pnpm qa:lab:build
 # Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.
 FROM build AS runtime-assets
-ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai"
+ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai,duckduckgo,firecrawl"
 ENV OPENCLAW_EXTENSIONS=${OPENCLAW_EXTENSIONS}
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 # Keep the install layer frozen, but allow prune to run against the full copied

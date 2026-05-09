@@ -1,13 +1,17 @@
 import fs from 'fs';
+import path from 'path';
 
 const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- DEBUGGING BINARY EXECUTION ---");
+    console.log("--- INJECTING CUSTOM STABLE MCP ---");
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
-    if (!rawCredentials) return;
+    if (!rawCredentials) {
+        console.log("[SKIP] No Google Drive credentials found in environment.");
+        return;
+    }
 
     try {
         fs.writeFileSync(KEY_PATH, rawCredentials);
@@ -25,21 +29,19 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
-        // USE NPX --NO-INSTALL to find the globally pre-installed package correctly
+        // Use our CUSTOM lightweight MCP server
         config.mcp.servers["google_drive"] = {
-            command: "npx", 
-            args: ["--no-install", "google-drive-mcp"], 
+            command: "node", 
+            args: ["scripts/mcp-gdrive.mjs"], 
             env: {
-                GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
                 GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
-                // Add a small memory limit to prevent the 1.2GB spike
-                NODE_OPTIONS: "--max-old-space-size=400"
+                NODE_OPTIONS: "--max-old-space-size=300"
             },
             type: "stdio"
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Config injected with npx wrapper and memory limit.`);
+        console.log(`[INFO] Custom stable MCP injected successfully.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

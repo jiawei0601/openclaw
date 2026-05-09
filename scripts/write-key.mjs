@@ -22,8 +22,10 @@ function parseCredentials(raw) {
             else { out += ch; }
         }
         const r = JSON.parse(out);
-        console.log('[PARSE] Step 2 (state-machine sanitize) succeeded.');
-        return r;
+        if (typeof r === 'object' && r !== null && !Array.isArray(r)) {
+            console.log('[PARSE] Step 2 (state-machine sanitize) succeeded.');
+            return r;
+        }
     } catch {}
 
     // 3. Outer quotes wrapping a JSON string
@@ -65,23 +67,9 @@ function parseCredentials(raw) {
 async function main() {
     console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
 
-    try {
-        let config = {};
-        if (fs.existsSync(CONFIG_PATH)) {
-            const raw = fs.readFileSync(CONFIG_PATH, 'utf8').trim();
-            if (raw.length > 0) config = JSON.parse(raw);
-        }
-        if (!config.models) config.models = {};
-        if (!config.models.providers) config.models.providers = {};
-        if (!config.models.providers.google) config.models.providers.google = {};
-        if (!config.models.providers.google.timeoutSeconds) {
-            config.models.providers.google.timeoutSeconds = 300;
-            fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-            console.log('[INFO] Model timeout set to 300s');
-        }
-    } catch (err) {
-        console.error(`[ERROR] Failed to patch model timeout: ${err.message}`);
-    }
+    // NOTE: Do NOT patch models.providers.google here — openclaw schema requires
+    // baseUrl and models[] alongside timeoutSeconds, and we don't know those values.
+    // Set the timeout via openclaw.json in Railway's volume or env instead.
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) {

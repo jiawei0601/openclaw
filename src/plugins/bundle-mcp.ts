@@ -305,14 +305,8 @@ export function loadEnabledBundleMcpConfig(params: {
     console.log(`[DEBUG] Found Google Drive key (length: ${keyContent.length}). Prefix: ${keyContent.substring(0, 20)}...`);
     
     result.config.mcpServers["google_drive"] = {
-      command: "npx",
-      args: [
-        "--quiet",
-        "-y",
-        "@modelcontextprotocol/server-gdrive",
-        "--service-account-key",
-        "/tmp/google-drive-key.json",
-      ],
+      command: "mcp-server-gdrive",
+      args: ["--service-account-key", "/tmp/google-drive-key.json"],
       env: {
         GOOGLE_APPLICATION_CREDENTIALS: "/tmp/google-drive-key.json",
         NODE_ENV: "production",

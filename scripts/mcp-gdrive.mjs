@@ -1,5 +1,5 @@
-// [Matt Pocock Soul] - Deep Module v1.4.1 (Zero-Dependency Scraper Edition)
-console.error("[BOOT] mcp-gdrive.mjs: Initializing Google Workspace Pro...");
+// [Matt Pocock Soul] - Deep Module v1.4.2 (Robust Parsing Edition)
+console.error("[BOOT] mcp-gdrive.mjs: Starting Google Workspace Pro (v1.4.2)");
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -35,27 +35,20 @@ class GoogleWorkspaceManager {
     this.docs = google.docs({ version: "v1", auth: this.auth });
   }
 
-  /**
-   * Native implementation using built-in fetch (Node 18+)
-   */
   async downloadAndStore(url, name, folderId = null) {
-    console.error(`[INFO] Fetching content from: ${url}`);
+    console.error(`[INFO] Fetching from ${url}`);
     try {
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
-      const body = Readable.fromWeb(response.body); // Convert Web Stream to Node Stream
-
+      const body = Readable.fromWeb(response.body);
       const res = await this.drive.files.create({
         requestBody: { name, parents: folderId ? [folderId] : [] },
         media: { mimeType: contentType, body },
         fields: "id, name, webViewLink"
       });
-      return `Success: ${res.data.name} saved. Link: ${res.data.webViewLink}`;
-    } catch (err) {
-      throw new Error(`Download failed: ${err.message}`);
-    }
+      return `Success: ${res.data.name}. Link: ${res.data.webViewLink}`;
+    } catch (err) { throw new Error(`Download failed: ${err.message}`); }
   }
 
   async createAndWriteDoc(name, content, folderId = null) {
@@ -64,15 +57,12 @@ class GoogleWorkspaceManager {
         requestBody: { name, mimeType: 'application/vnd.google-apps.document', parents: folderId ? [folderId] : [] },
         fields: 'id'
       });
-      const documentId = file.data.id;
       await this.docs.documents.batchUpdate({
-        documentId,
+        documentId: file.data.id,
         requestBody: { requests: [{ insertText: { location: { index: 1 }, text: content } }] }
       });
-      return `Created Doc: ${name} (${documentId})`;
-    } catch (err) {
-      throw new Error(`Doc error: ${err.message}`);
-    }
+      return `Created Doc: ${name} (${file.data.id})`;
+    } catch (err) { throw new Error(`Doc error: ${err.message}`); }
   }
 }
 
@@ -80,46 +70,35 @@ class GoogleWorkspaceManager {
 async function startServer() {
   try {
     let rawCreds = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON || process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
-    if (!rawCreds) throw new Error("Credentials missing in env");
+    if (!rawCreds) throw new Error("Credentials missing");
 
-    // Robust stripping of potential outer quotes/escapes from Railway Raw Editor
-    let cleanJson = rawCreds.trim();
-    if (cleanJson.startsWith('"')) {
-      console.error("[INFO] Stripping surrounding quotes from variable...");
-      try {
-        cleanJson = JSON.parse(cleanJson); // First pass to unescape
-      } catch (e) {
-        // If fails, manually strip and replace basic escapes
-        cleanJson = cleanJson.replace(/^"|"$/g, '').replace(/\\"/g, '"').replace(/\\n/g, '\n');
+    let credentials;
+    if (typeof rawCreds === 'object') {
+      credentials = rawCreds; // Already an object
+    } else {
+      let cleanJson = rawCreds.trim();
+      if (cleanJson.startsWith('"')) {
+        try {
+          cleanJson = JSON.parse(cleanJson);
+        } catch (e) {
+          cleanJson = cleanJson.replace(/^"|"$/g, '').replace(/\\"/g, '"').replace(/\\n/g, '\n');
+        }
       }
+      credentials = typeof cleanJson === 'string' ? JSON.parse(cleanJson) : cleanJson;
     }
-    
-    const credentials = typeof cleanJson === 'string' ? JSON.parse(cleanJson) : cleanJson;
+
     const manager = new GoogleWorkspaceManager(credentials);
-    
     const server = new Server(
-      { name: "google-workspace-pro", version: "1.4.1" },
+      { name: "google-workspace-pro", version: "1.4.2" },
       { capabilities: { tools: {} } }
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
-        { name: "list_files", description: "List files/folders", inputSchema: { type: "object", properties: { folderId: { type: "string" } } } },
-        { 
-          name: "write_spreadsheet_row", 
-          description: "Append rows to Sheet", 
-          inputSchema: { type: "object", required: ["spreadsheetId", "values"], properties: { spreadsheetId: { type: "string" }, values: { type: "array", items: { type: "array" } } } } 
-        },
-        { 
-          name: "write_google_doc", 
-          description: "Create Google Doc", 
-          inputSchema: { type: "object", required: ["name", "content"], properties: { name: { type: "string" }, content: { type: "string" }, folderId: { type: "string" } } } 
-        },
-        { 
-          name: "download_to_drive", 
-          description: "Download URL to Drive", 
-          inputSchema: { type: "object", required: ["url", "name"], properties: { url: { type: "string" }, name: { type: "string" }, folderId: { type: "string" } } } 
-        }
+        { name: "list_files", description: "List files", inputSchema: { type: "object", properties: { folderId: { type: "string" } } } },
+        { name: "write_spreadsheet_row", description: "Append rows to Sheet", inputSchema: { type: "object", required: ["spreadsheetId", "values"], properties: { spreadsheetId: { type: "string" }, values: { type: "array", items: { type: "array" } } } } },
+        { name: "write_google_doc", description: "Create Doc", inputSchema: { type: "object", required: ["name", "content"], properties: { name: { type: "string" }, content: { type: "string" }, folderId: { type: "string" } } } },
+        { name: "download_to_drive", description: "URL to Drive", inputSchema: { type: "object", required: ["url", "name"], properties: { url: { type: "string" }, name: { type: "string" }, folderId: { type: "string" } } } }
       ]
     }));
 
@@ -143,7 +122,7 @@ async function startServer() {
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("[SUCCESS] Google Workspace Pro (Zero-Dep) is live.");
+    console.error("[SUCCESS] Google Workspace Pro (v1.4.2) is active.");
 
   } catch (err) {
     console.error("[FATAL] Startup Failure:", err.stack || err.message);

@@ -498,6 +498,7 @@ clawtributors:hidden:end -->
     *   **服務帳號化**：放棄 OAuth，改寫自定義 `mcp-gdrive.mjs`，採用 **Google Service Account** (JSON Key) 實現 100% 非互動式登入。
     *   **依賴隔離區**：修改 `Dockerfile`，在 `/app/scripts/node_modules` 建立獨立的 SDK 運行區，成功繞過主專案的依賴檢查。
     *   **絕對路徑通訊**：強制 MCP 以絕對路徑啟動，解決了雲端環境下路徑解析不明的問題。
+*   **全自動上網能力**：整合了 `duckduckgo` 與 `firecrawl` 插件，讓小B在沒有實體瀏覽器的伺服器環境下，也能進行網頁搜尋與數據抓取。
 
 #### ⚙️ 從零開始設置指南 (Setup Guide)
 
@@ -515,8 +516,10 @@ clawtributors:hidden:end -->
 ##### 2. 環境變數設定 (Railway)
 在您的 Railway 部署環境中，新增以下變數：
 *   `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`：貼上剛才下載的 **完整 JSON 內容**。
+*   `FIRECRAWL_API_KEY`：至 [firecrawl.dev](https://www.firecrawl.dev/) 申請的 API Key（用於網頁內容抓取）。
 
 ##### 3. 指令範例
 部署完成後，您直接在 Telegram 對小B下令即可：
 *   「幫我在資料夾內建立一個名為『2330台積電』的試算表。」
 *   「列出資料夾中的所有檔案。」
+*   「上網搜尋台積電明年的配息資訊，並將重點寫入試算表。」

@@ -306,7 +306,13 @@ export function loadEnabledBundleMcpConfig(params: {
     
     result.config.mcpServers["google_drive"] = {
       command: "npx",
-      args: ["--quiet", "-y", "@modelcontextprotocol/server-gdrive"],
+      args: [
+        "--quiet",
+        "-y",
+        "@modelcontextprotocol/server-gdrive",
+        "--service-account-key",
+        "/tmp/google-drive-key.json",
+      ],
       env: {
         GOOGLE_APPLICATION_CREDENTIALS: "/tmp/google-drive-key.json",
         NODE_ENV: "production",

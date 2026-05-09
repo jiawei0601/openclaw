@@ -256,7 +256,7 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
 # Isolated environment inside scripts/ to bypass NODE_PATH blocking
 RUN cd /app/scripts && \
     npm init -y && \
-    npm install googleapis@144.0.0 @modelcontextprotocol/sdk@1.0.1 axios && \
+    npm install googleapis@144.0.0 @modelcontextprotocol/sdk@1.0.1 && \
     chown -R node:node /app/scripts/node_modules
 
 # Expose the CLI binary without requiring npm global writes as non-root.

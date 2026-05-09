@@ -4,7 +4,7 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- FINAL COMPATIBILITY ATTEMPT ---");
+    console.log("--- ATTEMPTING COMMUNITY GOOGLE DRIVE MCP ---");
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) return;
@@ -26,10 +26,10 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
-        // Use npx to be safe if global install is tricky
+        // Use a known existing community package on npm
         config.mcp.servers["google_drive"] = {
             command: "npx", 
-            args: ["-y", "@modelcontextprotocol/server-google-drive"],
+            args: ["-y", "@piotr-agier/google-drive-mcp"],
             env: {
                 GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
                 GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
@@ -38,7 +38,7 @@ async function main() {
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Configuration updated using npx fallback.`);
+        console.log(`[INFO] Configuration updated with community MCP server.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

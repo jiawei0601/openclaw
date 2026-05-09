@@ -252,8 +252,7 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
         docker-ce-cli docker-compose-plugin; \
     fi
 
-# Pre-install Google Drive MCP server globally for stability.
-RUN npm install -g @modelcontextprotocol/server-google-drive || npm install -g mcp-server-google-drive
+# Google Drive MCP will be handled dynamically via npx at runtime to avoid build errors.
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \

@@ -484,3 +484,39 @@ yuweuii
 yxjsxy
 zijiess
 clawtributors:hidden:end -->
+
+---
+
+## 🚀 Google 服務整合專案：開發歷程與設置指南 (Google Services Integration)
+
+#### 📝 開發歷程 (Development History)
+本專案經歷了從複雜到穩定的關鍵轉化，特別是針對雲端伺服器（如 Railway）的無頭環境（Headless Environment）進行了優化：
+
+*   **OAuth 的困境**：最初嘗試使用標準的 MCP 伺服器，但因其依賴瀏覽器互動授權，在伺服器端會導致系統卡死（持續 Typing）。
+*   **依賴崩潰危機**：初次嘗試將 Google SDK 直接注入主專案的 `package.json`，結果引發 `pnpm` Monorepo 的鎖定檔衝突，導致 Telegram 與 OpenAI 等插件全面失效。
+*   **技術突破 — 隔離執行環境**：
+    *   **服務帳號化**：放棄 OAuth，改寫自定義 `mcp-gdrive.mjs`，採用 **Google Service Account** (JSON Key) 實現 100% 非互動式登入。
+    *   **依賴隔離區**：修改 `Dockerfile`，在 `/app/scripts/node_modules` 建立獨立的 SDK 運行區，成功繞過主專案的依賴檢查。
+    *   **絕對路徑通訊**：強制 MCP 以絕對路徑啟動，解決了雲端環境下路徑解析不明的問題。
+
+#### ⚙️ 從零開始設置指南 (Setup Guide)
+
+##### 1. Google Cloud 平台設定
+1.  進入 [Google Cloud Console](https://console.cloud.google.com/)。
+2.  **啟用 API**：搜尋並啟用 **Google Drive API**、**Google Sheets API** 與 **Google Docs API**。
+3.  **建立服務帳戶 (Service Account)**：
+    *   前往 `IAM 與管理` > `服務帳戶`。
+    *   建立新帳戶，並在「金鑰」分頁點選 `新增金鑰` > `建立新金鑰` > 選擇 **JSON**。
+    *   下載後，請**複製整個 JSON 檔案內容**。
+4.  **賦予資料夾權限**：
+    *   開啟您的 Google Drive 資料夾，點選「共用」。
+    *   將金鑰中的 `client_email` 地址加入為 **「編輯者」**。
+
+##### 2. 環境變數設定 (Railway)
+在您的 Railway 部署環境中，新增以下變數：
+*   `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`：貼上剛才下載的 **完整 JSON 內容**。
+
+##### 3. 指令範例
+部署完成後，您直接在 Telegram 對小B下令即可：
+*   「幫我在資料夾內建立一個名為『2330台積電』的試算表。」
+*   「列出資料夾中的所有檔案。」

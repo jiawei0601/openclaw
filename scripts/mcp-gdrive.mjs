@@ -189,7 +189,16 @@ async function loadCredentials() {
   if (keyPath) {
     if (!fs.existsSync(keyPath))
       throw new Error(`Credentials file not found: ${keyPath}`);
-    return JSON.parse(fs.readFileSync(keyPath, "utf8"));
+    const raw = fs.readFileSync(keyPath, "utf8");
+    const creds = JSON.parse(raw);
+    console.error(`[INFO] Loaded credentials: client_email=${creds.client_email || "(missing)"}, private_key length=${creds.private_key ? creds.private_key.length : 0}`);
+    if (!creds.private_key) throw new Error(`Credentials file is missing private_key. client_email=${creds.client_email || "(missing)"}`);
+    if (!creds.client_email) throw new Error(`Credentials file is missing client_email`);
+    // Ensure private_key has real newlines (not literal \n sequences)
+    if (creds.private_key.includes("\\n")) {
+      creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+    }
+    return creds;
   }
 
   // Fallback: parse from env var
@@ -211,7 +220,9 @@ async function loadCredentials() {
       clean = clean.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, "\n");
     }
   }
-  return JSON.parse(clean);
+  const creds = JSON.parse(clean);
+  if (!creds.private_key) throw new Error(`Parsed credentials missing private_key`);
+  return creds;
 }
 
 async function getManager() {

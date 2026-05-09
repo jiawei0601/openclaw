@@ -102,8 +102,6 @@ RUN pnpm canvas:a2ui:bundle || \
      rm -rf vendor/a2ui apps/shared/OpenClawKit/Tools/CanvasA2UI)
 RUN pnpm build:docker
 
-# FORCE build all extensions to ensure dist/ folders exist
-RUN pnpm --filter "./extensions/**" build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build

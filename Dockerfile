@@ -10,6 +10,11 @@
 # unrelated plugin source changes.
 #
 # Build stages use full bookworm; the runtime image is always bookworm-slim.
+# Railway injects these as build args; used to namespace BuildKit cache mounts
+# so caches are isolated per project/service and satisfy Railway's cacheKey prefix requirement.
+ARG RAILWAY_PROJECT_ID=""
+ARG RAILWAY_SERVICE_ID=""
+
 ARG OPENCLAW_EXTENSIONS="codex,standard-harness,google-ai-studio,telegram,anthropic,openai,duckduckgo,firecrawl"
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR=extensions
 ARG OPENCLAW_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
@@ -43,6 +48,8 @@ RUN mkdir -p /out && \
 FROM ${OPENCLAW_BUN_IMAGE} AS bun-binary
 FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS build
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
+ARG RAILWAY_PROJECT_ID=""
+ARG RAILWAY_SERVICE_ID=""
 
 # Copy pinned Bun binary from the official image instead of fetching via curl.
 COPY --from=bun-binary /usr/local/bin/bun /usr/local/bin/bun
@@ -62,7 +69,7 @@ COPY --from=ext-deps /out/ ./${OPENCLAW_BUNDLED_PLUGIN_DIR}/
 
 # Reduce OOM risk on low-memory hosts during dependency installation.
 # Docker builds on small VMs may otherwise fail with "Killed" (exit 137).
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+RUN --mount=type=cache,id=${RAILWAY_PROJECT_ID}-${RAILWAY_SERVICE_ID}-pnpm-store,target=/root/.local/share/pnpm/store \
     NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 
 # pnpm v10+ may append peer-resolution hashes to virtual-store folder names; do not hardcode `.pnpm/...`
@@ -139,6 +146,8 @@ LABEL org.opencontainers.image.base.name="docker.io/library/node:24-bookworm-sli
 # ── Stage 3: Runtime ────────────────────────────────────────────
 FROM base-runtime
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
+ARG RAILWAY_PROJECT_ID=""
+ARG RAILWAY_SERVICE_ID=""
 
 # OCI base-image metadata for downstream image consumers.
 # If you change these annotations, also update:
@@ -182,7 +191,7 @@ RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 # Use a shared Corepack home so the non-root `node` user does not need a
 # first-run network fetch when invoking pnpm.
 ENV COREPACK_HOME=/usr/local/share/corepack
-RUN --mount=type=cache,id=corepack-home,target=/usr/local/share/corepack \
+RUN --mount=type=cache,id=${RAILWAY_PROJECT_ID}-${RAILWAY_SERVICE_ID}-corepack,target=/usr/local/share/corepack \
     install -d -m 0755 "$COREPACK_HOME" && \
     corepack enable && \
     for attempt in 1 2 3 4 5; do \
@@ -256,7 +265,7 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
     fi
 
 # Isolated environment inside scripts/ to bypass NODE_PATH blocking
-RUN --mount=type=cache,id=npm-scripts,target=/root/.npm \
+RUN --mount=type=cache,id=${RAILWAY_PROJECT_ID}-${RAILWAY_SERVICE_ID}-npm-scripts,target=/root/.npm \
     cd /app/scripts && \
     npm init -y && \
     npm install googleapis@144.0.0 @modelcontextprotocol/sdk@1.0.1 && \

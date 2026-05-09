@@ -25,18 +25,13 @@ async function main() {
                 try {
                     config = JSON.parse(raw);
                 } catch (parseErr) {
-                    console.warn(`[WARN] Existing config is invalid JSON, starting fresh: ${parseErr.message}`);
                     config = {};
                 }
             }
         }
 
-        // Correct nesting based on src/agents/bundle-mcp-config.ts
-        if (!config.mcp) config.mcp = {};
-        if (!config.mcp.servers) config.mcp.servers = {};
-
-        // Inject Google Drive Tool
-        config.mcp.servers["google_drive"] = {
+        // Try TWO locations just in case
+        const mcpConfig = {
             command: "/usr/local/bin/mcp-server-gdrive",
             args: ["--service-account-key", KEY_PATH],
             env: {
@@ -44,18 +39,31 @@ async function main() {
                 NODE_ENV: "production"
             },
             type: "stdio",
-            description: "Access and manage files in Google Drive, including reading, creating, and editing documents."
+            description: "Access and manage files in Google Drive."
         };
 
-        // Write back as formatted JSON
+        // Location 1: mcp.servers
+        if (!config.mcp) config.mcp = {};
+        if (!config.mcp.servers) config.mcp.servers = {};
+        config.mcp.servers["google_drive"] = mcpConfig;
+
+        // Location 2: mcpServers (Top level) - Use a safe name to avoid validation if it fails
+        // config.mcpServers = { "google_drive": mcpConfig }; 
+
+        // Write back
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH} (mcp.servers)`);
+        
+        // --- DIAGNOSTIC LOG ---
+        console.log("--- FINAL CONFIG CONTENT (SANITIZED) ---");
+        const sanitized = JSON.parse(JSON.stringify(config));
+        if (sanitized.mcp?.servers?.google_drive) {
+             sanitized.mcp.servers.google_drive.args = ["--service-account-key", "MASKED"];
+        }
+        console.log(JSON.stringify(sanitized, null, 2));
+        console.log("--- END DIAGNOSTIC LOG ---");
 
     } catch (err) {
         console.error(`[ERROR] Configuration injection failed: ${err.message}`);
-        if (!fs.existsSync(CONFIG_PATH) || fs.readFileSync(CONFIG_PATH).length === 0) {
-            fs.writeFileSync(CONFIG_PATH, '{}');
-        }
     }
 }
 

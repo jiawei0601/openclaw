@@ -174,6 +174,7 @@ COPY --from=runtime-assets --chown=node:node /app/docs ./docs
 COPY --from=runtime-assets --chown=node:node /app/qa ./qa
 COPY --from=runtime-assets --chown=node:node /app/scripts ./scripts
 RUN chmod -R 755 /app/scripts
+RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 
 # Keep pnpm available in the runtime image for container-local workflows.
 # Use a shared Corepack home so the non-root `node` user does not need a
@@ -257,6 +258,9 @@ RUN npm install -g @modelcontextprotocol/server-gdrive
 # Expose the CLI binary without requiring npm global writes as non-root.
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
  && chmod 755 /app/openclaw.mjs
+
+# Ensure config is writable for runtime injection
+RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 
 # Pre-create the default state dir so first-run Docker named volumes mounted
 # here inherit node ownership instead of root-owned state.

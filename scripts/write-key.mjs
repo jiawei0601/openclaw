@@ -32,8 +32,7 @@ async function main() {
             command: "node", 
             args: ["scripts/mcp-gdrive.mjs"], 
             env: {
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
-                NODE_PATH: "/app/mcp-runtime/node_modules"
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
             },
             type: "stdio"
         };

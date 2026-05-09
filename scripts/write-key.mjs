@@ -4,7 +4,7 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- FINAL OPTIMIZED GOOGLE DRIVE CONFIG ---");
+    console.log("--- DEBUGGING BINARY EXECUTION ---");
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) return;
@@ -25,19 +25,21 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
-        // Use the PRE-INSTALLED binary for zero-lag startup
+        // USE NPX --NO-INSTALL to find the globally pre-installed package correctly
         config.mcp.servers["google_drive"] = {
-            command: "google-drive-mcp", 
-            args: [], 
+            command: "npx", 
+            args: ["--no-install", "google-drive-mcp"], 
             env: {
                 GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
+                // Add a small memory limit to prevent the 1.2GB spike
+                NODE_OPTIONS: "--max-old-space-size=400"
             },
             type: "stdio"
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Configuration updated with pre-installed binary.`);
+        console.log(`[INFO] Config injected with npx wrapper and memory limit.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

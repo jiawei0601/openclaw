@@ -47,6 +47,26 @@ function parseCredentials(raw) {
 async function main() {
     console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
 
+    // Always patch openclaw.json with model timeout — the file is empty at runtime
+    // because Dockerfile does not copy openclaw.json into the final image.
+    try {
+        let config = {};
+        if (fs.existsSync(CONFIG_PATH)) {
+            const raw = fs.readFileSync(CONFIG_PATH, 'utf8').trim();
+            if (raw.length > 0) config = JSON.parse(raw);
+        }
+        if (!config.models) config.models = {};
+        if (!config.models.providers) config.models.providers = {};
+        if (!config.models.providers.google) config.models.providers.google = {};
+        if (!config.models.providers.google.timeoutSeconds) {
+            config.models.providers.google.timeoutSeconds = 300;
+            fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+            console.log('[INFO] Model timeout set to 300s');
+        }
+    } catch (err) {
+        console.error(`[ERROR] Failed to patch model timeout: ${err.message}`);
+    }
+
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) {
         console.log("[SKIP] No GOOGLE_DRIVE_CREDENTIALS_JSON found. Google Drive tools will not be available.");

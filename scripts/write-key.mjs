@@ -6,37 +6,48 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 function parseCredentials(raw) {
     let clean = raw.trim();
 
-    // 1. Direct parse (ideal: raw is clean JSON)
-    try { return JSON.parse(clean); } catch {}
+    // 1. Direct parse
+    try { const r = JSON.parse(clean); console.log('[PARSE] Step 1 (direct) succeeded.'); return r; } catch {}
 
-    // 2. Pretty-printed JSON with actual newlines inside private_key string value.
-    //    Escape any literal newlines that appear inside quoted strings.
+    // 2. Sanitize actual newlines inside quoted strings
     try {
-        const sanitized = clean.replace(/"((?:[^"\\]|\\.)*)"/gs, (match) =>
-            match.replace(/\n/g, '\\n').replace(/\r/g, '')
+        const sanitized = clean.replace(/"((?:[^"\]|\.)*)"/gs, (match) =>
+            match.replace(/\n/g, '\n').replace(/\r/g, '')
         );
-        return JSON.parse(sanitized);
+        const r = JSON.parse(sanitized);
+        console.log('[PARSE] Step 2 (sanitize newlines) succeeded.');
+        return r;
     } catch {}
 
-    // 3. Outer quotes wrapping a JSON string: "{ ... }" or "{\"type\":...}"
+    // 3. Outer quotes wrapping a JSON string
     if (clean.startsWith('"')) {
-        // 3a. Railway double-encoded: JSON.parse gives us the inner string
         try {
             const inner = JSON.parse(clean);
-            if (typeof inner === 'string') return JSON.parse(inner);
+            if (typeof inner === 'string') {
+                const r = JSON.parse(inner);
+                console.log('[PARSE] Step 3a (double-encoded) succeeded.');
+                return r;
+            }
         } catch {}
-        // 3b. Manual strip outer quotes + unescape
         const stripped = clean
             .slice(1, clean.endsWith('"') ? -1 : undefined)
             .replace(/\\"/g, '"')
-            .replace(/\\n/g, '\n');
-        try { return JSON.parse(stripped); } catch {}
+            .replace(/\n/g, '\n');
+        try {
+            const r = JSON.parse(stripped);
+            console.log('[PARSE] Step 3b (strip+unescape) succeeded.');
+            return r;
+        } catch {}
         clean = stripped;
     }
 
-    // 4. Starts with { but inner quotes are backslash-escaped: {\"type\":...}
+    // 4. Backslash-escaped inner quotes
     if (clean.startsWith('{')) {
-        try { return JSON.parse(clean.replace(/\\"/g, '"')); } catch {}
+        try {
+            const r = JSON.parse(clean.replace(/\\"/g, '"'));
+            console.log('[PARSE] Step 4 (unescape quotes) succeeded.');
+            return r;
+        } catch {}
     }
 
     throw new Error(
@@ -47,8 +58,6 @@ function parseCredentials(raw) {
 async function main() {
     console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
 
-    // Always patch openclaw.json with model timeout — the file is empty at runtime
-    // because Dockerfile does not copy openclaw.json into the final image.
     try {
         let config = {};
         if (fs.existsSync(CONFIG_PATH)) {
@@ -73,13 +82,34 @@ async function main() {
         return;
     }
 
+    console.log(`[INFO] GOOGLE_DRIVE_CREDENTIALS_JSON raw length: ${rawCredentials.length}`);
+    console.log(`[INFO] First 40 chars: ${JSON.stringify(rawCredentials.slice(0, 40))}`);
+
     let credentials;
     try {
         credentials = parseCredentials(rawCredentials);
     } catch (err) {
-        // Log the error but DO NOT exit — let the gateway start without Drive tools.
         console.error(`[ERROR] ${err.message}`);
         console.error('[ERROR] Google Drive MCP will not be available. Fix GOOGLE_DRIVE_CREDENTIALS_JSON in Railway variables.');
+        return;
+    }
+
+    const keys = Object.keys(credentials);
+    console.log(`[INFO] Parsed credential keys: ${keys.join(', ')}`);
+    console.log(`[INFO] client_email: ${credentials.client_email || '(missing)'}`);
+    console.log(`[INFO] private_key: ${credentials.private_key
+        ? `present (${credentials.private_key.length} chars, starts: ${credentials.private_key.slice(0, 27)}...)`
+        : '(missing or empty)'}`);
+
+    if (!credentials.private_key) {
+        console.error('[ERROR] Parsed credentials are missing private_key.');
+        console.error('[ERROR] Make sure GOOGLE_DRIVE_CREDENTIALS_JSON is the FULL service account JSON from GCP (not partial).');
+        console.error('[ERROR] Google Drive MCP will not be available.');
+        return;
+    }
+    if (!credentials.client_email) {
+        console.error('[ERROR] Parsed credentials are missing client_email.');
+        console.error('[ERROR] Google Drive MCP will not be available.');
         return;
     }
 

@@ -62,7 +62,8 @@ COPY --from=ext-deps /out/ ./${OPENCLAW_BUNDLED_PLUGIN_DIR}/
 
 # Reduce OOM risk on low-memory hosts during dependency installation.
 # Docker builds on small VMs may otherwise fail with "Killed" (exit 137).
-RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 
 # pnpm v10+ may append peer-resolution hashes to virtual-store folder names; do not hardcode `.pnpm/...`
 # paths. Matrix's native downloader can hit transient release CDN errors while
@@ -181,7 +182,8 @@ RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 # Use a shared Corepack home so the non-root `node` user does not need a
 # first-run network fetch when invoking pnpm.
 ENV COREPACK_HOME=/usr/local/share/corepack
-RUN install -d -m 0755 "$COREPACK_HOME" && \
+RUN --mount=type=cache,id=corepack-home,target=/usr/local/share/corepack \
+    install -d -m 0755 "$COREPACK_HOME" && \
     corepack enable && \
     for attempt in 1 2 3 4 5; do \
       if corepack prepare "$(node -p "require('./package.json').packageManager")" --activate; then \
@@ -254,7 +256,8 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
     fi
 
 # Isolated environment inside scripts/ to bypass NODE_PATH blocking
-RUN cd /app/scripts && \
+RUN --mount=type=cache,id=npm-scripts,target=/root/.npm \
+    cd /app/scripts && \
     npm init -y && \
     npm install googleapis@144.0.0 @modelcontextprotocol/sdk@1.0.1 && \
     chown -R node:node /app/scripts/node_modules

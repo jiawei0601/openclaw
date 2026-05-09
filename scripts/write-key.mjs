@@ -31,12 +31,11 @@ async function main() {
             }
         }
 
-        // Ensure gateway structure exists
-        if (!config.gateway) config.gateway = {};
-        if (!config.gateway.mcpServers) config.gateway.mcpServers = {};
+        // Fix: mcpServers should be a TOP-LEVEL key, not under gateway
+        if (!config.mcpServers) config.mcpServers = {};
 
         // Inject Google Drive Tool
-        config.gateway.mcpServers["google_drive"] = {
+        config.mcpServers["google_drive"] = {
             command: "/usr/local/bin/mcp-server-gdrive",
             args: ["--service-account-key", KEY_PATH],
             env: {
@@ -49,11 +48,10 @@ async function main() {
 
         // Write back as formatted JSON
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH}`);
+        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH} (Top-level)`);
 
     } catch (err) {
         console.error(`[ERROR] Configuration injection failed: ${err.message}`);
-        // If everything fails, at least ensure the file is a valid empty JSON to avoid crash loop
         if (!fs.existsSync(CONFIG_PATH) || fs.readFileSync(CONFIG_PATH).length === 0) {
             fs.writeFileSync(CONFIG_PATH, '{}');
         }

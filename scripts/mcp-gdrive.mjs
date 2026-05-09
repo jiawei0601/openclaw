@@ -7,9 +7,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { google } from "googleapis";
 
-const credentialsJson = process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
+const credentialsJson = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON || process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
 if (!credentialsJson) {
-  console.error("[CRITICAL] GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON is missing");
+  console.error("[CRITICAL] GOOGLE_DRIVE_CREDENTIALS_JSON is missing");
   process.exit(1);
 }
 

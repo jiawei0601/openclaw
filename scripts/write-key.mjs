@@ -14,23 +14,28 @@ async function main() {
         } catch (err) {
             console.error(`[ERROR] Failed to write key: ${err.message}`);
         }
-    } else {
-        console.warn('[WARN] GOOGLE_DRIVE_CREDENTIALS_JSON is not set');
     }
 
     // 2. Inject into openclaw.json
     try {
         let config = {};
         if (fs.existsSync(CONFIG_PATH)) {
-            const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
-            config = JSON.parse(raw);
+            const raw = fs.readFileSync(CONFIG_PATH, 'utf8').trim();
+            if (raw.length > 0) {
+                try {
+                    config = JSON.parse(raw);
+                } catch (parseErr) {
+                    console.warn(`[WARN] Existing config is invalid JSON, starting fresh: ${parseErr.message}`);
+                    config = {};
+                }
+            }
         }
 
-        // Ensure structures exist
+        // Ensure gateway structure exists
         if (!config.gateway) config.gateway = {};
         if (!config.gateway.mcpServers) config.gateway.mcpServers = {};
 
-        // Inject Google Drive
+        // Inject Google Drive Tool
         config.gateway.mcpServers["google_drive"] = {
             command: "/usr/local/bin/mcp-server-gdrive",
             args: ["--service-account-key", KEY_PATH],
@@ -42,13 +47,16 @@ async function main() {
             description: "Access and manage files in Google Drive, including reading, creating, and editing documents."
         };
 
-        // Write back
+        // Write back as formatted JSON
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Google Drive tool injected into ${CONFIG_PATH}`);
-        console.log(`[DEBUG] Current MCP Servers: ${Object.keys(config.gateway.mcpServers).join(', ')}`);
+        console.log(`[INFO] Google Drive tool successfully injected into ${CONFIG_PATH}`);
 
     } catch (err) {
         console.error(`[ERROR] Configuration injection failed: ${err.message}`);
+        // If everything fails, at least ensure the file is a valid empty JSON to avoid crash loop
+        if (!fs.existsSync(CONFIG_PATH) || fs.readFileSync(CONFIG_PATH).length === 0) {
+            fs.writeFileSync(CONFIG_PATH, '{}');
+        }
     }
 }
 

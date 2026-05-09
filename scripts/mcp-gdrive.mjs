@@ -1,3 +1,4 @@
+console.error("[BOOT] mcp-gdrive.mjs process started");
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {

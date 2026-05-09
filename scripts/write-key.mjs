@@ -1,22 +1,14 @@
 import fs from 'fs';
-import path from 'path';
 
-const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- INJECTING CUSTOM STABLE MCP ---");
+    console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) {
-        console.log("[SKIP] No Google Drive credentials found in environment.");
+        console.log("[SKIP] No GOOGLE_DRIVE_CREDENTIALS_JSON found. Google Drive tools will not be available.");
         return;
-    }
-
-    try {
-        fs.writeFileSync(KEY_PATH, rawCredentials);
-    } catch (err) {
-        console.error(`[ERROR] Write failed: ${err.message}`);
     }
 
     try {
@@ -28,19 +20,26 @@ async function main() {
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
+
+        const mcpEnv = {
+            GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
+        };
+        if (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID) {
+            mcpEnv.GOOGLE_DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+        }
+
         config.mcp.servers["google_drive"] = {
-            command: "node", 
-            args: ["/app/scripts/mcp-gdrive.mjs"], 
-            env: {
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
-            },
-            type: "stdio"
+            command: "node",
+            args: ["/app/scripts/mcp-gdrive.mjs"],
+            env: mcpEnv,
+            type: "stdio",
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Custom stable MCP injected successfully.`);
+        console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted — set GOOGLE_DRIVE_ROOT_FOLDER_ID to restrict)'}`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
+        process.exit(1);
     }
 }
 

@@ -1,7 +1,7 @@
 {
   "models": {
     "providers": {
-      "google-ai-studio": {
+      "google": {
         "timeoutSeconds": 180
       }
     }

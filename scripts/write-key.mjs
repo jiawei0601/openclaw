@@ -30,7 +30,7 @@ async function main() {
         if (!config.mcp.servers) config.mcp.servers = {};
         config.mcp.servers["google_drive"] = {
             command: "node", 
-            args: ["scripts/mcp-gdrive.mjs"], 
+            args: ["/app/scripts/mcp-gdrive.mjs"], 
             env: {
                 GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
             },

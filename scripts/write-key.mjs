@@ -6,28 +6,42 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 function parseCredentials(raw) {
     let clean = raw.trim();
 
-    // Try direct parse first (ideal case)
+    // 1. Direct parse (ideal: raw is clean JSON)
     try { return JSON.parse(clean); } catch {}
 
-    // Wrapped in outer quotes: "{ \"type\": ... }" or "{\"type\":...}"
+    // 2. Pretty-printed JSON with actual newlines inside private_key string value.
+    //    Escape any literal newlines that appear inside quoted strings.
+    try {
+        const sanitized = clean.replace(/"((?:[^"\\]|\\.)*)"/gs, (match) =>
+            match.replace(/\n/g, '\\n').replace(/\r/g, '')
+        );
+        return JSON.parse(sanitized);
+    } catch {}
+
+    // 3. Outer quotes wrapping a JSON string: "{ ... }" or "{\"type\":...}"
     if (clean.startsWith('"')) {
+        // 3a. Railway double-encoded: JSON.parse gives us the inner string
         try {
             const inner = JSON.parse(clean);
             if (typeof inner === 'string') return JSON.parse(inner);
         } catch {}
-        // Manual strip outer quotes and unescape
-        clean = clean.slice(1, clean.endsWith('"') ? -1 : undefined)
-                     .replace(/\\"/g, '"')
-                     .replace(/\\n/g, '\n');
-        try { return JSON.parse(clean); } catch {}
+        // 3b. Manual strip outer quotes + unescape
+        const stripped = clean
+            .slice(1, clean.endsWith('"') ? -1 : undefined)
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, '\n');
+        try { return JSON.parse(stripped); } catch {}
+        clean = stripped;
     }
 
-    // Starts with { but has backslash-escaped quotes: {\"type\":...}
+    // 4. Starts with { but inner quotes are backslash-escaped: {\"type\":...}
     if (clean.startsWith('{')) {
         try { return JSON.parse(clean.replace(/\\"/g, '"')); } catch {}
     }
 
-    throw new Error(`Cannot parse GOOGLE_DRIVE_CREDENTIALS_JSON (starts with: ${JSON.stringify(clean.slice(0, 30))})`);
+    throw new Error(
+        `Cannot parse credentials. First 80 raw chars: ${JSON.stringify(raw.slice(0, 80))}`
+    );
 }
 
 async function main() {
@@ -39,15 +53,14 @@ async function main() {
         return;
     }
 
-    // Parse and re-serialize to guarantee clean JSON before writing to file.
-    // Railway may store the value with backslash-escaped quotes ({\"type\":...}),
-    // which would cause JSON.parse to fail in the MCP server.
     let credentials;
     try {
         credentials = parseCredentials(rawCredentials);
     } catch (err) {
-        console.error(`[ERROR] Failed to parse credentials: ${err.message}`);
-        process.exit(1);
+        // Log the error but DO NOT exit — let the gateway start without Drive tools.
+        console.error(`[ERROR] ${err.message}`);
+        console.error('[ERROR] Google Drive MCP will not be available. Fix GOOGLE_DRIVE_CREDENTIALS_JSON in Railway variables.');
+        return;
     }
 
     try {
@@ -55,7 +68,7 @@ async function main() {
         console.log(`[INFO] Credentials written to ${KEY_PATH}`);
     } catch (err) {
         console.error(`[ERROR] Failed to write credentials file: ${err.message}`);
-        process.exit(1);
+        return;
     }
 
     try {
@@ -68,9 +81,7 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
-        const mcpEnv = {
-            GOOGLE_DRIVE_KEY_PATH: KEY_PATH,
-        };
+        const mcpEnv = { GOOGLE_DRIVE_KEY_PATH: KEY_PATH };
         if (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID) {
             mcpEnv.GOOGLE_DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
         }
@@ -86,7 +97,6 @@ async function main() {
         console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted)'}`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
-        process.exit(1);
     }
 }
 

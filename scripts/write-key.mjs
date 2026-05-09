@@ -5,48 +5,21 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- STARTING DEEP DIAGNOSTICS ---");
+    console.log("--- FINAL ATTEMPT DIAGNOSTICS ---");
 
-    // 1. Verify and Write Google Drive Key
+    // 1. Write the Key
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
-    if (!rawCredentials) {
-        console.error("[ERROR] GOOGLE_DRIVE_CREDENTIALS_JSON is MISSING!");
-        return;
-    }
+    if (!rawCredentials) return;
 
     try {
-        // Try to parse to ensure it's valid JSON
-        const parsed = JSON.parse(rawCredentials);
-        console.log(`[INFO] Credentials JSON is valid. Type: ${parsed.type}, Project: ${parsed.project_id}`);
-        
-        // Write to file
         fs.writeFileSync(KEY_PATH, rawCredentials);
         console.log(`[INFO] Key written to ${KEY_PATH}`);
     } catch (err) {
-        console.error(`[ERROR] Credentials JSON is INVALID: ${err.message}`);
-        console.log(`[DEBUG] Raw start: ${rawCredentials.substring(0, 50)}...`);
+        console.error(`[ERROR] Write failed: ${err.message}`);
     }
 
-    // 2. TEST RUN the MCP Server to see WHY it crashes
-    console.log("[INFO] Attempting to dry-run the MCP server...");
-    const testRun = spawnSync('/usr/local/bin/mcp-server-gdrive', ['--service-account-key', KEY_PATH], {
-        env: { ...process.env, GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH },
-        timeout: 5000,
-        encoding: 'utf8'
-    });
-
-    // Note: MCP servers expect to run indefinitely, so spawnSync might timeout or fail.
-    // But we can see the initial output.
-    if (testRun.stderr) {
-        console.log("--- MCP SERVER STDERR (CRITICAL) ---");
-        console.log(testRun.stderr);
-    }
-    if (testRun.stdout) {
-        console.log("--- MCP SERVER STDOUT ---");
-        console.log(testRun.stdout);
-    }
-
-    // 3. Inject into openclaw.json (Correcting Path)
+    // 2. Updated Injection Strategy
+    // We will use BOTH environment variables and arguments to force Service Account mode
     try {
         let config = {};
         if (fs.existsSync(CONFIG_PATH)) {
@@ -58,18 +31,20 @@ async function main() {
         if (!config.mcp.servers) config.mcp.servers = {};
 
         config.mcp.servers["google_drive"] = {
-            command: "/usr/local/bin/mcp-server-gdrive",
+            // Force using node to run the global binary if possible, or just the binary
+            command: "mcp-server-gdrive", 
             args: ["--service-account-key", KEY_PATH],
             env: {
+                // This is the CRITICAL one for Google Cloud SDK
                 GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
-                NODE_ENV: "production"
+                // Some servers need this to skip the 'auth' prompt
+                GDRIVE_SERVICE_ACCOUNT: "true" 
             },
-            type: "stdio",
-            description: "Access and manage files in Google Drive."
+            type: "stdio"
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Injection successful.`);
+        console.log(`[INFO] Final configuration injected with GOOGLE_APPLICATION_CREDENTIALS force.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

@@ -4,7 +4,7 @@ const KEY_PATH = '/tmp/google-drive-key.json';
 const CONFIG_PATH = '/app/openclaw.json';
 
 async function main() {
-    console.log("--- ENABLING FULL WRITE PERMISSIONS ---");
+    console.log("--- FINAL OPTIMIZED GOOGLE DRIVE CONFIG ---");
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) return;
@@ -25,21 +25,19 @@ async function main() {
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 
-        // Updated configuration with FULL SCOPES for writing
+        // Use the PRE-INSTALLED binary for zero-lag startup
         config.mcp.servers["google_drive"] = {
-            command: "npx", 
-            args: ["-y", "@piotr-agier/google-drive-mcp"],
+            command: "google-drive-mcp", 
+            args: [], 
             env: {
                 GOOGLE_APPLICATION_CREDENTIALS: KEY_PATH,
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
-                // Explicitly request full drive and docs access
-                GDRIVE_SCOPES: "https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/documents"
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
             },
             type: "stdio"
         };
 
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        console.log(`[INFO] Configuration updated with WRITE SCOPES.`);
+        console.log(`[INFO] Configuration updated with pre-installed binary.`);
     } catch (err) {
         console.error(`[ERROR] Config injection failed: ${err.message}`);
     }

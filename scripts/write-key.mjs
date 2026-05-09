@@ -28,13 +28,12 @@ async function main() {
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
-
-        // Use our CUSTOM lightweight MCP server
         config.mcp.servers["google_drive"] = {
             command: "node", 
             args: ["scripts/mcp-gdrive.mjs"], 
             env: {
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
+                NODE_PATH: "/app/mcp-runtime/node_modules"
             },
             type: "stdio"
         };

@@ -34,8 +34,7 @@ async function main() {
             command: "node", 
             args: ["scripts/mcp-gdrive.mjs"], 
             env: {
-                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials,
-                NODE_OPTIONS: "--max-old-space-size=300"
+                GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: rawCredentials
             },
             type: "stdio"
         };

@@ -252,8 +252,6 @@ RUN if [ -n "$OPENCLAW_INSTALL_DOCKER_CLI" ]; then \
         docker-ce-cli docker-compose-plugin; \
     fi
 
-# Pre-install dependencies for custom Google Drive MCP
-RUN npm install -g googleapis @modelcontextprotocol/sdk
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \

@@ -9,13 +9,20 @@ function parseCredentials(raw) {
     // 1. Direct parse
     try { const r = JSON.parse(clean); console.log('[PARSE] Step 1 (direct) succeeded.'); return r; } catch {}
 
-    // 2. Sanitize actual newlines inside quoted strings
+    // 2. Escape actual newlines inside JSON string values (state-machine, no regex)
     try {
-        const sanitized = clean.replace(/"((?:[^"\]|\.)*)"/gs, (match) =>
-            match.replace(/\n/g, '\n').replace(/\r/g, '')
-        );
-        const r = JSON.parse(sanitized);
-        console.log('[PARSE] Step 2 (sanitize newlines) succeeded.');
+        let inStr = false, esc = false, out = '';
+        for (let i = 0; i < clean.length; i++) {
+            const ch = clean[i];
+            if (esc) { out += ch; esc = false; }
+            else if (ch === '\\' && inStr) { out += ch; esc = true; }
+            else if (ch === '"') { inStr = !inStr; out += ch; }
+            else if (ch === '\n' && inStr) { out += '\\n'; }
+            else if (ch === '\r' && inStr) { /* skip */ }
+            else { out += ch; }
+        }
+        const r = JSON.parse(out);
+        console.log('[PARSE] Step 2 (state-machine sanitize) succeeded.');
         return r;
     } catch {}
 
@@ -32,7 +39,7 @@ function parseCredentials(raw) {
         const stripped = clean
             .slice(1, clean.endsWith('"') ? -1 : undefined)
             .replace(/\\"/g, '"')
-            .replace(/\n/g, '\n');
+            .replace(/\\n/g, '\n');
         try {
             const r = JSON.parse(stripped);
             console.log('[PARSE] Step 3b (strip+unescape) succeeded.');

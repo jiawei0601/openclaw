@@ -266,6 +266,9 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
 # Ensure config is writable for runtime injection
 RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 
+# Copy isolated MCP dependencies from build stage
+COPY --from=build /app/scripts/node_modules /app/scripts/node_modules
+
 # Pre-create the default state dir so first-run Docker named volumes mounted
 # here inherit node ownership instead of root-owned state.
 RUN install -d -m 0700 -o node -g node /home/node/.openclaw && \

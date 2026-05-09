@@ -299,26 +299,5 @@ export function loadEnabledBundleMcpConfig(params: {
     createDiagnostic: (pluginId, message) => ({ pluginId, message }),
   });
 
-  // Emergency Injection: If the Google Drive key exists, force the server into the config.
-  if (fs.existsSync("/tmp/google-drive-key.json")) {
-    const keyContent = fs.readFileSync("/tmp/google-drive-key.json", "utf8");
-    console.log(`[DEBUG] Found Google Drive key (length: ${keyContent.length}). Prefix: ${keyContent.substring(0, 20)}...`);
-    
-    result.config.mcpServers["google_drive"] = {
-      command: "/usr/local/bin/mcp-server-gdrive",
-      args: ["--service-account-key", "/tmp/google-drive-key.json"],
-      env: {
-        GOOGLE_APPLICATION_CREDENTIALS: "/tmp/google-drive-key.json",
-        NODE_ENV: "production",
-      },
-      type: "stdio",
-      description:
-        "Access and manage files in Google Drive, including reading, creating, and editing documents.",
-    };
-    console.log(`[DEBUG] Injected MCP servers: ${Object.keys(result.config.mcpServers).join(", ")}`);
-  } else {
-    console.log("[DEBUG] Google Drive key NOT found at /tmp/google-drive-key.json. Skipping injection.");
-  }
-
   return result;
 }

@@ -8,19 +8,6 @@
       "timeoutSeconds": 180
     }
   },
-  "mcp": {
-    "servers": {
-      "google_drive": {
-        "command": "mcp-server-gdrive",
-        "args": [],
-        "env": {
-          "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/google-drive-key.json"
-        },
-        "type": "stdio",
-        "description": "Access and manage files in Google Drive, including reading, creating, and editing documents."
-      }
-    }
-  },
   "channels": {
     "telegram": {
       "dmPolicy": "open",

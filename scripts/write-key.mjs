@@ -171,11 +171,6 @@ async function main() {
         config.agents.defaults.model.primary = agentModel;
         console.log(`[INFO] Primary model set to: ${agentModel}`);
 
-        // Increase LLM idle timeout to handle complex multi-step tasks
-        if (!config.agents.defaults.llm) config.agents.defaults.llm = {};
-        config.agents.defaults.llm.idleTimeoutSeconds = 120;
-        console.log('[INFO] LLM idle timeout set to 120s.');
-
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

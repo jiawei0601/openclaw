@@ -155,14 +155,20 @@ async function main() {
     try {
         const config = readConfig();
 
-        // Inject system prompt if provided
+        // Inject agent defaults
+        if (!config.agents) config.agents = {};
+        if (!config.agents.defaults) config.agents.defaults = {};
+
         const systemPrompt = process.env.AGENT_SYSTEM_PROMPT;
         if (systemPrompt) {
-            if (!config.agents) config.agents = {};
-            if (!config.agents.defaults) config.agents.defaults = {};
             config.agents.defaults.systemPromptOverride = systemPrompt;
             console.log('[INFO] System prompt injected.');
         }
+
+        // Increase LLM idle timeout to handle complex multi-step tasks
+        if (!config.agents.defaults.llm) config.agents.defaults.llm = {};
+        config.agents.defaults.llm.idleTimeoutSeconds = 120;
+        console.log('[INFO] LLM idle timeout set to 120s.');
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};

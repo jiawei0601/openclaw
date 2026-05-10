@@ -165,6 +165,12 @@ async function main() {
             console.log('[INFO] System prompt injected.');
         }
 
+        // Set primary model
+        const agentModel = process.env.AGENT_MODEL || 'google/gemini-3.1-flash-lite-preview';
+        if (!config.agents.defaults.model) config.agents.defaults.model = {};
+        config.agents.defaults.model.primary = agentModel;
+        console.log(`[INFO] Primary model set to: ${agentModel}`);
+
         // Increase LLM idle timeout to handle complex multi-step tasks
         if (!config.agents.defaults.llm) config.agents.defaults.llm = {};
         config.agents.defaults.llm.idleTimeoutSeconds = 120;

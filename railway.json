@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "sh -c 'node /app/scripts/write-key.mjs && export OPENCLAW_CONFIG_PATH=/app/openclaw.json && node /app/openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
+    "startCommand": "sh -c 'node /app/scripts/write-key.mjs && node /app/scripts/scheduler-daemon.mjs & export OPENCLAW_CONFIG_PATH=/app/openclaw.json && exec node /app/openclaw.mjs gateway run --bind lan --port $PORT --allow-unconfigured'",
     "healthcheckPath": "/healthz",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE"

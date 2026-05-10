@@ -1,10 +1,9 @@
 const MAX_RETRIES = 3;
-const RESET_AFTER_MS = 10 * 60 * 1000; // 10 minutes — treat as a new task
+const RESET_AFTER_MS = 10 * 60 * 1000;
 
-// In-memory retry state: sessionKey → { count, lastAt }
 const retryState = new Map();
 
-const TIMEOUT_PATTERN = /model idle timeout|did not produce a response before|embedded agent failed before reply|an unknown error occurred/i;
+const TIMEOUT_PATTERN = /model idle timeout|did not produce a response before|embedded agent failed before reply|an unknown error occurred|produced no reply|idle watchdog/i;
 
 console.error('[auto-continue] Hook handler loaded.');
 
@@ -19,7 +18,6 @@ const handler = async (event) => {
 
     const now = Date.now();
 
-    // Reset counter if last timeout was >10 minutes ago (new task started)
     const existing = retryState.get(sessionKey);
     if (existing && (now - existing.lastAt) > RESET_AFTER_MS) {
         retryState.delete(sessionKey);
@@ -28,7 +26,7 @@ const handler = async (event) => {
     const state = retryState.get(sessionKey) ?? { count: 0, lastAt: now };
 
     if (state.count >= MAX_RETRIES) {
-        console.error(`[auto-continue] Max retries (${MAX_RETRIES}) reached for session ${sessionKey}. Manual intervention required.`);
+        console.error(`[auto-continue] Max retries (${MAX_RETRIES}) reached for session ${sessionKey}.`);
         return;
     }
 
@@ -38,7 +36,6 @@ const handler = async (event) => {
 
     console.error(`[auto-continue] Timeout detected. Auto-retry ${state.count}/${MAX_RETRIES} for session ${sessionKey}`);
 
-    // Wait 2s for gateway to settle before sending next turn
     await new Promise(r => setTimeout(r, 2000));
 
     const port = process.env.OPENCLAW_GATEWAY_PORT ?? '18789';
@@ -58,8 +55,8 @@ const handler = async (event) => {
             console.error(`[auto-continue] ✗ POST failed: ${resp.status} ${text}`);
         }
     } catch (err) {
-        console.error(`[auto-continue] ✗ Error calling /hooks/agent: ${err.message}`);
+        console.error(`[auto-continue] ✗ Error: ${err.message}`);
     }
 };
 
-export default handler;
+module.exports = handler;

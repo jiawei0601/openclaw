@@ -1,4 +1,4 @@
-// Google Workspace MCP Server v2.2.0 - Full CRUD + OAuth support
+// Google Workspace MCP Server v2.3.0 - Full CRUD + OAuth + Chart support
 console.error("[BOOT] mcp-gdrive.mjs: Initializing...");
 
 import fs from "fs";
@@ -12,6 +12,27 @@ import { Readable } from "stream";
 
 let managerInstance = null;
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || null;
+
+// Parse A1 notation (e.g. "A1:C10" or "Sheet1!A1:C10") to grid indices
+function parseA1Range(range) {
+  const rangeOnly = range.includes("!") ? range.split("!")[1] : range;
+  const [start, end] = rangeOnly.split(":");
+
+  function colToIndex(col) {
+    let idx = 0;
+    for (const ch of col.toUpperCase()) idx = idx * 26 + (ch.charCodeAt(0) - 64);
+    return idx - 1;
+  }
+  function parseCell(cell) {
+    const m = cell.match(/^([A-Za-z]+)(\d+)$/);
+    if (!m) throw new Error(`Invalid cell: ${cell}`);
+    return { col: colToIndex(m[1]), row: parseInt(m[2]) - 1 };
+  }
+
+  const s = parseCell(start);
+  const e = end ? parseCell(end) : s;
+  return { startRow: s.row, endRow: e.row + 1, startCol: s.col, endCol: e.col + 1 };
+}
 
 class GoogleWorkspaceManager {
   constructor(auth, googleLib) {
@@ -180,6 +201,106 @@ class GoogleWorkspaceManager {
       requestBody: { values },
     });
     return `Updated range ${resolvedRange} in spreadsheet ${spreadsheetId}.`;
+  }
+
+  async addChartToSheet(spreadsheetId, chartType, title, dataRange, sheetName = null) {
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(sheetId,title))",
+    });
+    const sheets = meta.data.sheets || [];
+    const targetSheet = sheetName
+      ? sheets.find((s) => s.properties.title === sheetName)
+      : sheets[0];
+    if (!targetSheet) throw new Error(`Sheet "${sheetName}" not found`);
+    const sheetId = targetSheet.properties.sheetId;
+
+    const g = parseA1Range(dataRange);
+    const domainSource = {
+      sheetId,
+      startRowIndex: g.startRow,
+      endRowIndex: g.endRow,
+      startColumnIndex: g.startCol,
+      endColumnIndex: g.startCol + 1,
+    };
+
+    const chartTypeUpper = chartType.toUpperCase();
+    let spec;
+
+    if (chartTypeUpper === "PIE") {
+      spec = {
+        title,
+        pieChart: {
+          legendPosition: "RIGHT_LEGEND",
+          domain: { sourceRange: { sources: [domainSource] } },
+          series: {
+            sourceRange: {
+              sources: [{
+                sheetId,
+                startRowIndex: g.startRow,
+                endRowIndex: g.endRow,
+                startColumnIndex: g.startCol + 1,
+                endColumnIndex: g.startCol + 2,
+              }],
+            },
+          },
+        },
+      };
+    } else {
+      const series = [];
+      for (let col = g.startCol + 1; col < g.endCol; col++) {
+        series.push({
+          series: {
+            sourceRange: {
+              sources: [{
+                sheetId,
+                startRowIndex: g.startRow,
+                endRowIndex: g.endRow,
+                startColumnIndex: col,
+                endColumnIndex: col + 1,
+              }],
+            },
+          },
+          targetAxis: "LEFT_AXIS",
+        });
+      }
+      spec = {
+        title,
+        basicChart: {
+          chartType: chartTypeUpper,
+          legendPosition: "BOTTOM_LEGEND",
+          axis: [
+            { position: "BOTTOM_AXIS", title: "Category" },
+            { position: "LEFT_AXIS", title: "Value" },
+          ],
+          domains: [{ domain: { sourceRange: { sources: [domainSource] } } }],
+          series,
+        },
+      };
+    }
+
+    const resp = await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          addChart: {
+            chart: {
+              spec,
+              position: {
+                overlayPosition: {
+                  anchorCell: { sheetId, rowIndex: g.startRow, columnIndex: g.endCol + 1 },
+                  widthPixels: 600,
+                  heightPixels: 400,
+                },
+              },
+            },
+          },
+        }],
+      },
+    });
+
+    const chartId = resp.data.replies?.[0]?.addChart?.chart?.chartId;
+    return `Chart "${title}" (${chartTypeUpper}) added to spreadsheet ${spreadsheetId}. Chart ID: ${chartId}`;
   }
 
   async downloadAndStore(url, name, folderId) {
@@ -454,6 +575,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "add_chart_to_sheet",
+      description: "Add a chart to an existing Google Sheet based on a data range.",
+      inputSchema: {
+        type: "object",
+        required: ["spreadsheetId", "chartType", "title", "dataRange"],
+        properties: {
+          spreadsheetId: { type: "string", description: "The spreadsheet ID" },
+          chartType: {
+            type: "string",
+            enum: ["BAR", "LINE", "COLUMN", "AREA", "PIE"],
+            description: "Chart type",
+          },
+          title: { type: "string", description: "Chart title" },
+          dataRange: {
+            type: "string",
+            description: "A1 notation of data range, e.g. \"A1:B10\". First column = categories (X axis), remaining columns = series (Y axis).",
+          },
+          sheetName: {
+            type: "string",
+            description: "Sheet tab name (optional, defaults to first sheet)",
+          },
+        },
+      },
+    },
   ],
 }));
 
@@ -516,6 +662,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "download_to_drive": {
         const msg = await manager.downloadAndStore(args.url, args.name, args.folderId);
+        return { content: [{ type: "text", text: msg }] };
+      }
+      case "add_chart_to_sheet": {
+        const msg = await manager.addChartToSheet(
+          args.spreadsheetId,
+          args.chartType,
+          args.title,
+          args.dataRange,
+          args.sheetName ?? null
+        );
         return { content: [{ type: "text", text: msg }] };
       }
       default:

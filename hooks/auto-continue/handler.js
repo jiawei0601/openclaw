@@ -4,7 +4,7 @@ const RESET_AFTER_MS = 10 * 60 * 1000; // 10 minutes — treat as a new task
 // In-memory retry state: sessionKey → { count, lastAt }
 const retryState = new Map();
 
-const TIMEOUT_PATTERN = /model idle timeout|did not produce a response before/i;
+const TIMEOUT_PATTERN = /model idle timeout|did not produce a response before|embedded agent failed before reply|an unknown error occurred/i;
 
 console.error('[auto-continue] Hook handler loaded.');
 

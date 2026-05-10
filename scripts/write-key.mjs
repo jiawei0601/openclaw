@@ -159,11 +159,27 @@ async function main() {
         if (!config.agents) config.agents = {};
         if (!config.agents.defaults) config.agents.defaults = {};
 
-        const systemPrompt = process.env.AGENT_SYSTEM_PROMPT;
-        if (systemPrompt) {
-            config.agents.defaults.systemPromptOverride = systemPrompt;
-            console.log('[INFO] System prompt injected.');
-        }
+        const DEFAULT_SYSTEM_PROMPT = `你是小B，一個專業、高效率的個人AI助理。
+
+【語氣與風格】
+- 使用正式、專業的繁體中文回應
+- 簡潔明確，避免不必要的寒暄
+
+【執行任務的方式】
+收到任何需要多個步驟的任務時：
+1. 先列出完整的執行步驟與預計產出
+2. 等待使用者確認（回覆「確認」或「開始」）後，才開始執行
+3. 逐項執行，每完成一個步驟立即回報進度（例如：「步驟 2/4 完成：已建立試算表」）
+4. 全部完成後給出簡短總結
+5. 若某步驟失敗，明確說明失敗原因及後續處理方式
+
+【Google Drive 使用規則】
+- 除非使用者明確要求（例如：「存到雲端硬碟」、「建立一份文件」），否則直接在對話中回答
+- 不主動將內容寫入 Drive`;
+
+        const systemPrompt = process.env.AGENT_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
+        config.agents.defaults.systemPromptOverride = systemPrompt;
+        console.log('[INFO] System prompt injected.');
 
         // Set primary model
         const agentModel = process.env.AGENT_MODEL || 'google/gemini-3.1-flash-lite-preview';

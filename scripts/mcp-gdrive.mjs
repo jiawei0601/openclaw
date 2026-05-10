@@ -1,4 +1,4 @@
-// Google Workspace MCP Server v2.0.0 - Full CRUD
+// Google Workspace MCP Server v2.1.0 - Full CRUD
 console.error("[BOOT] mcp-gdrive.mjs: Initializing...");
 
 import fs from "fs";
@@ -47,6 +47,25 @@ class GoogleWorkspaceManager {
       pageSize: 100,
     });
     return res.data.files;
+  }
+
+  async deleteFile(fileId, permanent = false) {
+    if (permanent) {
+      await this.drive.files.delete({ fileId });
+      return `Permanently deleted file ${fileId}`;
+    } else {
+      await this.drive.files.update({ fileId, requestBody: { trashed: true }, fields: "id" });
+      return `Moved file ${fileId} to trash`;
+    }
+  }
+
+  async renameFile(fileId, newName) {
+    const res = await this.drive.files.update({
+      fileId,
+      requestBody: { name: newName },
+      fields: "id, name",
+    });
+    return `Renamed file to "${res.data.name}" (id: ${res.data.id})`;
   }
 
   async moveFile(fileId, targetFolderId) {
@@ -259,6 +278,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "delete_file",
+      description: "Delete a file from Google Drive (moves to trash by default).",
+      inputSchema: {
+        type: "object",
+        required: ["fileId"],
+        properties: {
+          fileId: { type: "string" },
+          permanent: {
+            type: "boolean",
+            description: "If true, permanently delete. Default: false (move to trash).",
+          },
+        },
+      },
+    },
+    {
+      name: "rename_file",
+      description: "Rename a file in Google Drive.",
+      inputSchema: {
+        type: "object",
+        required: ["fileId", "newName"],
+        properties: {
+          fileId: { type: "string" },
+          newName: { type: "string" },
+        },
+      },
+    },
+    {
       name: "move_file",
       description: "Move a file to a different Google Drive folder.",
       inputSchema: {
@@ -397,6 +443,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_files": {
         const files = await manager.listFiles(args.folderId);
         return { content: [{ type: "text", text: JSON.stringify(files, null, 2) }] };
+      }
+      case "delete_file": {
+        const msg = await manager.deleteFile(args.fileId, args.permanent ?? false);
+        return { content: [{ type: "text", text: msg }] };
+      }
+      case "rename_file": {
+        const msg = await manager.renameFile(args.fileId, args.newName);
+        return { content: [{ type: "text", text: msg }] };
       }
       case "move_file": {
         const msg = await manager.moveFile(args.fileId, args.targetFolderId);

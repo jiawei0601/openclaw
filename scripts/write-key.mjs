@@ -171,6 +171,10 @@ async function main() {
         config.agents.defaults.model.primary = agentModel;
         console.log(`[INFO] Primary model set to: ${agentModel}`);
 
+        // Extend agent turn timeout for complex multi-step tasks
+        config.agents.defaults.timeoutSeconds = 600;
+        console.log('[INFO] Agent timeout set to 600s.');
+
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

@@ -1,4 +1,4 @@
-// Google Workspace MCP Server v2.1.0 - Full CRUD
+// Google Workspace MCP Server v2.2.0 - Full CRUD + OAuth support
 console.error("[BOOT] mcp-gdrive.mjs: Initializing...");
 
 import fs from "fs";
@@ -14,18 +14,9 @@ let managerInstance = null;
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || null;
 
 class GoogleWorkspaceManager {
-  constructor(credentials, googleLib) {
+  constructor(auth, googleLib) {
     this.google = googleLib;
-    this.auth = new this.google.auth.JWT(
-      credentials.client_email,
-      null,
-      credentials.private_key,
-      [
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/documents",
-      ]
-    );
+    this.auth = auth;
     this.drive = this.google.drive({ version: "v3", auth: this.auth });
     this.sheets = this.google.sheets({ version: "v4", auth: this.auth });
     this.docs = this.google.docs({ version: "v1", auth: this.auth });
@@ -250,8 +241,32 @@ async function getManager() {
   console.error("[INFO] Lazy loading 'googleapis'...");
   const { google } = await import("googleapis");
 
-  const credentials = await loadCredentials();
-  managerInstance = new GoogleWorkspaceManager(credentials, google);
+  let auth;
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+
+  if (clientId && clientSecret && refreshToken) {
+    console.error("[INFO] Auth mode: OAuth user credentials");
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    auth = oauth2Client;
+  } else {
+    console.error("[INFO] Auth mode: service account");
+    const credentials = await loadCredentials();
+    auth = new google.auth.JWT(
+      credentials.client_email,
+      null,
+      credentials.private_key,
+      [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/documents",
+      ]
+    );
+  }
+
+  managerInstance = new GoogleWorkspaceManager(auth, google);
   console.error(
     `[SUCCESS] Manager initialized. Root folder: ${ROOT_FOLDER_ID || "(unrestricted)"}`
   );

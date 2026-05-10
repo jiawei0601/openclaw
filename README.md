@@ -28,7 +28,7 @@
 
 | 變數 | 說明 |
 |---|---|
-| `GOOGLE_AI_API_KEY` | Google AI Studio API Key（預設使用 Gemini） |
+| `GEMINI_API_KEY` | Google AI Studio API Key（預設使用 Gemini） |
 
 ### 富果行情（選填）
 

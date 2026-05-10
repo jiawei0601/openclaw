@@ -223,6 +223,22 @@ async function main() {
             console.log('[INFO] Fugle MCP injected.');
         }
 
+        if (process.env.TAISHIN_PERSONAL_ID) {
+            config.mcp.servers["taishin_trade"] = {
+                command: "node",
+                args: ["/app/scripts/mcp-taishin-trade.mjs"],
+                env: {
+                    TAISHIN_PERSONAL_ID: process.env.TAISHIN_PERSONAL_ID,
+                    TAISHIN_PASSWORD: process.env.TAISHIN_PASSWORD || '',
+                    TAISHIN_CERT: process.env.TAISHIN_CERT || '',
+                    TAISHIN_CERT_PASS: process.env.TAISHIN_CERT_PASS || '',
+                    TAISHIN_PAPER: process.env.TAISHIN_PAPER || '1',
+                },
+                type: "stdio",
+            };
+            console.log(`[INFO] Taishin Trade MCP injected (${process.env.TAISHIN_PAPER === '1' ? 'PAPER' : 'LIVE'} mode).`);
+        }
+
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
         console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted)'}`);
     } catch (err) {

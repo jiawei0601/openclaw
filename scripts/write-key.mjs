@@ -171,6 +171,13 @@ async function main() {
         config.agents.defaults.model.primary = agentModel;
         console.log(`[INFO] Primary model set to: ${agentModel}`);
 
+        // Extend timeout for Google provider (handles long generation tasks)
+        if (!config.models) config.models = {};
+        if (!config.models.providers) config.models.providers = {};
+        if (!config.models.providers.google) config.models.providers.google = {};
+        config.models.providers.google.timeoutSeconds = 300;
+        console.log('[INFO] Google provider timeout set to 300s.');
+
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

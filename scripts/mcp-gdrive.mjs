@@ -1,4 +1,4 @@
-// Google Workspace MCP Server v2.3.0 - Full CRUD + OAuth + Chart support
+// Google Workspace MCP Server v2.4.0 - Full CRUD + OAuth + Chart + Image-in-Doc support
 console.error("[BOOT] mcp-gdrive.mjs: Initializing...");
 
 import fs from "fs";
@@ -303,6 +303,92 @@ class GoogleWorkspaceManager {
     return `Chart "${title}" (${chartTypeUpper}) added to spreadsheet ${spreadsheetId}. Chart ID: ${chartId}`;
   }
 
+  async insertChartToDoc(spreadsheetId, chartId, documentId) {
+    // Fetch chart image using OAuth token
+    const chartUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/embed/oimg?id=${spreadsheetId}&oid=${chartId}`;
+    const { token } = await this.auth.getAccessToken();
+
+    const imgResp = await fetch(chartUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!imgResp.ok) throw new Error(`Failed to export chart image: ${imgResp.status} ${imgResp.statusText}`);
+
+    const imgBuffer = Buffer.from(await imgResp.arrayBuffer());
+
+    // Upload PNG to Drive
+    const readable = new Readable();
+    readable.push(imgBuffer);
+    readable.push(null);
+
+    const uploaded = await this.drive.files.create({
+      requestBody: { name: `_chart_${chartId}.png`, mimeType: "image/png" },
+      media: { mimeType: "image/png", body: readable },
+      fields: "id",
+    });
+    const fileId = uploaded.data.id;
+
+    // Make publicly readable so Docs API can fetch it
+    await this.drive.permissions.create({
+      fileId,
+      requestBody: { role: "reader", type: "anyone" },
+    });
+
+    // Find end index of Doc to append image there
+    const docData = await this.docs.documents.get({
+      documentId,
+      fields: "body.content",
+    });
+    const lastEl = docData.data.body.content?.at(-1);
+    const insertIndex = Math.max(1, (lastEl?.endIndex ?? 2) - 1);
+
+    // Insert image into Doc
+    const imageUrl = `https://drive.google.com/uc?id=${fileId}`;
+    await this.docs.documents.batchUpdate({
+      documentId,
+      requestBody: {
+        requests: [{
+          insertInlineImage: {
+            uri: imageUrl,
+            location: { index: insertIndex },
+            objectSize: {
+              height: { magnitude: 250, unit: "PT" },
+              width: { magnitude: 400, unit: "PT" },
+            },
+          },
+        }],
+      },
+    });
+
+    return `Chart image inserted into document ${documentId}. Temp image file ID: ${fileId} (delete when done).`;
+  }
+
+  async insertImageToDoc(documentId, imageUrl, widthPt = 400, heightPt = 250) {
+    const docData = await this.docs.documents.get({
+      documentId,
+      fields: "body.content",
+    });
+    const lastEl = docData.data.body.content?.at(-1);
+    const insertIndex = Math.max(1, (lastEl?.endIndex ?? 2) - 1);
+
+    await this.docs.documents.batchUpdate({
+      documentId,
+      requestBody: {
+        requests: [{
+          insertInlineImage: {
+            uri: imageUrl,
+            location: { index: insertIndex },
+            objectSize: {
+              height: { magnitude: heightPt, unit: "PT" },
+              width: { magnitude: widthPt, unit: "PT" },
+            },
+          },
+        }],
+      },
+    });
+
+    return `Image inserted into document ${documentId}.`;
+  }
+
   async downloadAndStore(url, name, folderId) {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -576,6 +662,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "insert_chart_to_doc",
+      description: "Export a chart from Google Sheets as a PNG image and insert it into a Google Doc. Use the chartId returned by add_chart_to_sheet.",
+      inputSchema: {
+        type: "object",
+        required: ["spreadsheetId", "chartId", "documentId"],
+        properties: {
+          spreadsheetId: { type: "string" },
+          chartId: { type: "number", description: "Chart ID returned by add_chart_to_sheet" },
+          documentId: { type: "string" },
+        },
+      },
+    },
+    {
+      name: "insert_image_to_doc",
+      description: "Insert a publicly accessible image (by URL) at the end of a Google Doc.",
+      inputSchema: {
+        type: "object",
+        required: ["documentId", "imageUrl"],
+        properties: {
+          documentId: { type: "string" },
+          imageUrl: { type: "string", description: "Publicly accessible HTTPS image URL" },
+          widthPt: { type: "number", description: "Image width in points (default: 400)" },
+          heightPt: { type: "number", description: "Image height in points (default: 250)" },
+        },
+      },
+    },
+    {
       name: "add_chart_to_sheet",
       description: "Add a chart to an existing Google Sheet based on a data range.",
       inputSchema: {
@@ -662,6 +775,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "download_to_drive": {
         const msg = await manager.downloadAndStore(args.url, args.name, args.folderId);
+        return { content: [{ type: "text", text: msg }] };
+      }
+      case "insert_chart_to_doc": {
+        const msg = await manager.insertChartToDoc(
+          args.spreadsheetId,
+          args.chartId,
+          args.documentId
+        );
+        return { content: [{ type: "text", text: msg }] };
+      }
+      case "insert_image_to_doc": {
+        const msg = await manager.insertImageToDoc(
+          args.documentId,
+          args.imageUrl,
+          args.widthPt ?? 400,
+          args.heightPt ?? 250
+        );
         return { content: [{ type: "text", text: msg }] };
       }
       case "add_chart_to_sheet": {

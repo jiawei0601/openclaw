@@ -174,6 +174,7 @@ COPY --from=runtime-assets --chown=node:node /app/skills ./skills
 COPY --from=runtime-assets --chown=node:node /app/docs ./docs
 COPY --from=runtime-assets --chown=node:node /app/qa ./qa
 COPY --from=runtime-assets --chown=node:node /app/scripts ./scripts
+COPY --from=runtime-assets --chown=node:node /app/hooks ./hooks
 RUN chmod -R 755 /app/scripts
 RUN touch /app/openclaw.json && chown node:node /app/openclaw.json
 

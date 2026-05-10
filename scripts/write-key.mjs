@@ -118,7 +118,7 @@ async function main() {
         console.log('[INFO] System prompt injected.');
 
         // Set primary model
-        const agentModel = process.env.AGENT_MODEL || 'google/gemini-3.1-flash-lite-preview';
+        const agentModel = process.env.AGENT_MODEL || 'gemini-3.1-flash-lite-preview';
         if (!config.agents.defaults.model) config.agents.defaults.model = {};
         config.agents.defaults.model.primary = agentModel;
         console.log(`[INFO] Primary model set to: ${agentModel}`);

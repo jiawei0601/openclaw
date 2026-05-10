@@ -73,6 +73,35 @@ async function main() {
         config.hooks.allowRequestSessionKey = true;
         console.log('[INFO] Auto-continue hook configured.');
 
+        // Telegram channel
+        if (process.env.TELEGRAM_BOT_TOKEN) {
+            if (!config.plugins) config.plugins = {};
+            config.plugins.enabled = true;
+            if (!Array.isArray(config.plugins.allow)) config.plugins.allow = [];
+            if (!config.plugins.allow.includes('telegram')) config.plugins.allow.push('telegram');
+            if (!config.plugins.entries) config.plugins.entries = {};
+            config.plugins.entries.telegram = { enabled: true };
+
+            if (!config.channels) config.channels = {};
+            config.channels.telegram = {
+                enabled: true,
+                botToken: {
+                    source: 'env',
+                    provider: 'default',
+                    id: 'TELEGRAM_BOT_TOKEN',
+                },
+                // 限制只有允許的 Telegram 使用者 ID 可以使用
+                // 設定 TELEGRAM_ALLOW_FROM 為你的 Telegram 數字 ID（可從 @userinfobot 取得）
+                ...(process.env.TELEGRAM_ALLOW_FROM ? {
+                    dmPolicy: 'allowlist',
+                    allowFrom: process.env.TELEGRAM_ALLOW_FROM.split(',').map(s => s.trim()),
+                } : {
+                    dmPolicy: 'none',
+                }),
+            };
+            console.log('[INFO] Telegram channel configured.');
+        }
+
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

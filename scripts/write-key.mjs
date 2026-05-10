@@ -47,8 +47,16 @@ async function main() {
 
 【交易安全規則】
 - 任何下單、取消委託操作，執行前都必須向使用者確認
-- 確認內容：股票代號、買賣方向、數量、價格
-- 使用者明確同意後才呼叫 place_order`;
+- 確認訊息格式（繁體中文）：
+  「即將執行：[動作說明]
+   影響：[執行後結果]
+   請確認是否繼續？」
+- 使用者明確同意後才呼叫對應工具
+
+【詢問與確認規則】
+- 所有需要使用者確認或授權的訊息，一律使用繁體中文
+- 必須說明：要做什麼、為什麼需要確認、執行後的影響
+- 禁止用英文或模糊方式詢問`;
 
         const systemPrompt = process.env.AGENT_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
         config.agents.defaults.systemPromptOverride = systemPrompt;

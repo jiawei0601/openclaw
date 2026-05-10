@@ -175,6 +175,21 @@ async function main() {
         config.agents.defaults.timeoutSeconds = 600;
         console.log('[INFO] Agent timeout set to 600s.');
 
+        // Enable auto-continue hook
+        if (!config.hooks) config.hooks = {};
+        if (!config.hooks.internal) config.hooks.internal = {};
+        if (!config.hooks.internal.load) config.hooks.internal.load = {};
+        if (!Array.isArray(config.hooks.internal.load.extraDirs)) config.hooks.internal.load.extraDirs = [];
+        if (!config.hooks.internal.load.extraDirs.includes('/app/hooks')) {
+            config.hooks.internal.load.extraDirs.push('/app/hooks');
+        }
+        config.hooks.internal.enabled = true;
+        console.log('[INFO] Auto-continue hook configured.');
+
+        // Allow sessionKey in /hooks/agent (required for hook to target specific session)
+        if (!config.gateway) config.gateway = {};
+        config.gateway.allowRequestSessionKey = true;
+
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

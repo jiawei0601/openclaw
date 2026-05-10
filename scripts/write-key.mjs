@@ -213,6 +213,16 @@ async function main() {
             type: "stdio",
         };
 
+        if (process.env.FUGLE_API_KEY) {
+            config.mcp.servers["fugle"] = {
+                command: "node",
+                args: ["/app/scripts/mcp-fugle.mjs"],
+                env: { FUGLE_API_KEY: process.env.FUGLE_API_KEY },
+                type: "stdio",
+            };
+            console.log('[INFO] Fugle MCP injected.');
+        }
+
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
         console.log(`[INFO] MCP injected. Root folder: ${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '(unrestricted)'}`);
     } catch (err) {

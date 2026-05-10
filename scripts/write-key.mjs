@@ -184,11 +184,8 @@ async function main() {
             config.hooks.internal.load.extraDirs.push('/app/hooks');
         }
         config.hooks.internal.enabled = true;
+        config.hooks.allowRequestSessionKey = true;
         console.log('[INFO] Auto-continue hook configured.');
-
-        // Allow sessionKey in /hooks/agent (required for hook to target specific session)
-        if (!config.gateway) config.gateway = {};
-        config.gateway.allowRequestSessionKey = true;
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};

@@ -64,12 +64,30 @@ function parseCredentials(raw) {
     );
 }
 
+function readConfig() {
+    try {
+        if (fs.existsSync(CONFIG_PATH)) {
+            const raw = fs.readFileSync(CONFIG_PATH, 'utf8').trim();
+            if (raw.length > 0) return JSON.parse(raw);
+        }
+    } catch {}
+    return {};
+}
+
 async function main() {
     console.log("--- INJECTING GOOGLE WORKSPACE MCP ---");
 
-    // NOTE: Do NOT patch models.providers.google here — openclaw schema requires
-    // baseUrl and models[] alongside timeoutSeconds, and we don't know those values.
-    // Set the timeout via openclaw.json in Railway's volume or env instead.
+    // Ensure openclaw.json is valid — the Dockerfile does not copy it into the
+    // final runtime image so the file starts empty, which causes a JSON parse crash.
+    try {
+        const raw = fs.existsSync(CONFIG_PATH) ? fs.readFileSync(CONFIG_PATH, 'utf8').trim() : '';
+        if (raw.length === 0) {
+            fs.writeFileSync(CONFIG_PATH, '{}');
+            console.log('[INFO] Initialized empty openclaw.json');
+        }
+    } catch (err) {
+        console.error(`[ERROR] Failed to initialize openclaw.json: ${err.message}`);
+    }
 
     const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
     if (!rawCredentials) {
@@ -98,7 +116,7 @@ async function main() {
 
     if (!credentials.private_key) {
         console.error('[ERROR] Parsed credentials are missing private_key.');
-        console.error('[ERROR] Make sure GOOGLE_DRIVE_CREDENTIALS_JSON is the FULL service account JSON from GCP (not partial).');
+        console.error('[ERROR] Make sure GOOGLE_DRIVE_CREDENTIALS_JSON is the FULL service account JSON from GCP.');
         console.error('[ERROR] Google Drive MCP will not be available.');
         return;
     }
@@ -117,11 +135,7 @@ async function main() {
     }
 
     try {
-        let config = {};
-        if (fs.existsSync(CONFIG_PATH)) {
-            const raw = fs.readFileSync(CONFIG_PATH, 'utf8').trim();
-            if (raw.length > 0) config = JSON.parse(raw);
-        }
+        const config = readConfig();
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};

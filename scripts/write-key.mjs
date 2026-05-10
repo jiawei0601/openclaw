@@ -155,6 +155,15 @@ async function main() {
     try {
         const config = readConfig();
 
+        // Inject system prompt if provided
+        const systemPrompt = process.env.AGENT_SYSTEM_PROMPT;
+        if (systemPrompt) {
+            if (!config.agents) config.agents = {};
+            if (!config.agents.defaults) config.agents.defaults = {};
+            config.agents.defaults.systemPromptOverride = systemPrompt;
+            console.log('[INFO] System prompt injected.');
+        }
+
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
 

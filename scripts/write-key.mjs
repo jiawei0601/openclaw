@@ -89,49 +89,67 @@ async function main() {
         console.error(`[ERROR] Failed to initialize openclaw.json: ${err.message}`);
     }
 
-    const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
-    if (!rawCredentials) {
-        console.log("[SKIP] No GOOGLE_DRIVE_CREDENTIALS_JSON found. Google Drive tools will not be available.");
-        return;
+    const oauthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    const oauthClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+    const oauthRefreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+    const useOAuth = oauthClientId && oauthClientSecret && oauthRefreshToken;
+
+    const mcpEnv = {};
+    if (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID) {
+        mcpEnv.GOOGLE_DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
     }
 
-    console.log(`[INFO] GOOGLE_DRIVE_CREDENTIALS_JSON raw length: ${rawCredentials.length}`);
-    console.log(`[INFO] First 40 chars: ${JSON.stringify(rawCredentials.slice(0, 40))}`);
+    if (useOAuth) {
+        console.log('[INFO] Auth mode: OAuth user credentials detected.');
+        mcpEnv.GOOGLE_OAUTH_CLIENT_ID = oauthClientId;
+        mcpEnv.GOOGLE_OAUTH_CLIENT_SECRET = oauthClientSecret;
+        mcpEnv.GOOGLE_OAUTH_REFRESH_TOKEN = oauthRefreshToken;
+    } else {
+        const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
+        if (!rawCredentials) {
+            console.log("[SKIP] No GOOGLE_DRIVE_CREDENTIALS_JSON or OAuth variables found. Google Drive tools will not be available.");
+            return;
+        }
 
-    let credentials;
-    try {
-        credentials = parseCredentials(rawCredentials);
-    } catch (err) {
-        console.error(`[ERROR] ${err.message}`);
-        console.error('[ERROR] Google Drive MCP will not be available. Fix GOOGLE_DRIVE_CREDENTIALS_JSON in Railway variables.');
-        return;
-    }
+        console.log(`[INFO] GOOGLE_DRIVE_CREDENTIALS_JSON raw length: ${rawCredentials.length}`);
+        console.log(`[INFO] First 40 chars: ${JSON.stringify(rawCredentials.slice(0, 40))}`);
 
-    const keys = Object.keys(credentials);
-    console.log(`[INFO] Parsed credential keys: ${keys.join(', ')}`);
-    console.log(`[INFO] client_email: ${credentials.client_email || '(missing)'}`);
-    console.log(`[INFO] private_key: ${credentials.private_key
-        ? `present (${credentials.private_key.length} chars, starts: ${credentials.private_key.slice(0, 27)}...)`
-        : '(missing or empty)'}`);
+        let credentials;
+        try {
+            credentials = parseCredentials(rawCredentials);
+        } catch (err) {
+            console.error(`[ERROR] ${err.message}`);
+            console.error('[ERROR] Google Drive MCP will not be available. Fix GOOGLE_DRIVE_CREDENTIALS_JSON in Railway variables.');
+            return;
+        }
 
-    if (!credentials.private_key) {
-        console.error('[ERROR] Parsed credentials are missing private_key.');
-        console.error('[ERROR] Make sure GOOGLE_DRIVE_CREDENTIALS_JSON is the FULL service account JSON from GCP.');
-        console.error('[ERROR] Google Drive MCP will not be available.');
-        return;
-    }
-    if (!credentials.client_email) {
-        console.error('[ERROR] Parsed credentials are missing client_email.');
-        console.error('[ERROR] Google Drive MCP will not be available.');
-        return;
-    }
+        const keys = Object.keys(credentials);
+        console.log(`[INFO] Parsed credential keys: ${keys.join(', ')}`);
+        console.log(`[INFO] client_email: ${credentials.client_email || '(missing)'}`);
+        console.log(`[INFO] private_key: ${credentials.private_key
+            ? `present (${credentials.private_key.length} chars, starts: ${credentials.private_key.slice(0, 27)}...)`
+            : '(missing or empty)'}`);
 
-    try {
-        fs.writeFileSync(KEY_PATH, JSON.stringify(credentials), 'utf8');
-        console.log(`[INFO] Credentials written to ${KEY_PATH}`);
-    } catch (err) {
-        console.error(`[ERROR] Failed to write credentials file: ${err.message}`);
-        return;
+        if (!credentials.private_key) {
+            console.error('[ERROR] Parsed credentials are missing private_key.');
+            console.error('[ERROR] Google Drive MCP will not be available.');
+            return;
+        }
+        if (!credentials.client_email) {
+            console.error('[ERROR] Parsed credentials are missing client_email.');
+            console.error('[ERROR] Google Drive MCP will not be available.');
+            return;
+        }
+
+        try {
+            fs.writeFileSync(KEY_PATH, JSON.stringify(credentials), 'utf8');
+            console.log(`[INFO] Credentials written to ${KEY_PATH}`);
+        } catch (err) {
+            console.error(`[ERROR] Failed to write credentials file: ${err.message}`);
+            return;
+        }
+
+        mcpEnv.GOOGLE_DRIVE_KEY_PATH = KEY_PATH;
     }
 
     try {
@@ -139,11 +157,6 @@ async function main() {
 
         if (!config.mcp) config.mcp = {};
         if (!config.mcp.servers) config.mcp.servers = {};
-
-        const mcpEnv = { GOOGLE_DRIVE_KEY_PATH: KEY_PATH };
-        if (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID) {
-            mcpEnv.GOOGLE_DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-        }
 
         config.mcp.servers["google_drive"] = {
             command: "node",

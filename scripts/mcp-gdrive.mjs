@@ -154,9 +154,11 @@ class GoogleWorkspaceManager {
   }
 
   async appendSheetRows(spreadsheetId, values) {
+    const meta = await this.sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties.title" });
+    const sheetTitle = meta.data.sheets?.[0]?.properties?.title || "Sheet1";
     await this.sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: "Sheet1!A1",
+      range: `${sheetTitle}!A1`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -164,13 +166,20 @@ class GoogleWorkspaceManager {
   }
 
   async updateSheetCells(spreadsheetId, range, values) {
+    // If range has no sheet name prefix, prepend the actual first sheet title
+    let resolvedRange = range;
+    if (!range.includes("!")) {
+      const meta = await this.sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties.title" });
+      const sheetTitle = meta.data.sheets?.[0]?.properties?.title || "Sheet1";
+      resolvedRange = `${sheetTitle}!${range}`;
+    }
     await this.sheets.spreadsheets.values.update({
       spreadsheetId,
-      range,
+      range: resolvedRange,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
-    return `Updated range ${range} in spreadsheet ${spreadsheetId}.`;
+    return `Updated range ${resolvedRange} in spreadsheet ${spreadsheetId}.`;
   }
 
   async downloadAndStore(url, name, folderId) {

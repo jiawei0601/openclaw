@@ -6,6 +6,8 @@ const retryState = new Map();
 
 const TIMEOUT_PATTERN = /model idle timeout|did not produce a response before/i;
 
+console.error('[auto-continue] Hook handler loaded.');
+
 const handler = async (event) => {
     if (event.type !== 'message' || event.action !== 'sent') return;
 
